@@ -1,0 +1,1859 @@
+---
+title: "에픽하이 1집과 3집의 단어 대조하기"
+format: html
+editor: visual
+---
+
+에픽하이1집과 에픽하이 3집에 가사 비교 분석하기 한 프로그램에 출연하여 에픽하이는 1집에는 힙합정신 위주의 작업물을, 3집에는 대중성을 가미한 작업물을 선보였다고 밝혔다.
+
+## Package
+
+```{r}
+#| label: load-packages
+#| include: false
+
+c(
+  "tidyverse", # 어지러웠던 R세상을 깔끔하게 정돈. 
+# "dplyr",     # tidyverse 부착. 공구상자
+# "stringr",   # tidyverse 부착. 문자형자료 처리
+  "tidytable", # datatable패키지를 tidy인터페이스로. 빠르고 함수명 혼란 제거
+  "rvest",     # 웹 스크래핑 도구
+  "janitor",   # 정제 및 기술통계 도구
+  "tidytext",  # 텍스트를 깔끔하게 정돈하는 도구
+  "RcppMeCab", # 형태소분석기
+  "tidylo",    # 상대빈도 분석
+  "gt"         # tidy원리를 적용한 표 생성. 
+  ) -> pkg
+```
+
+```{r}
+sapply(pkg, function(x){
+  if(!require(x, ch = T)) install.packages(x, dependencies = T)
+})
+
+```
+
+```{r}
+sapply(pkg, require, ch = T)
+```
+
+## Scrap
+
+### 1집 Remember (2003. 10. 24.)
+
+![](https://musicmeta-phinf.pstatic.net/album/000/003/3122.jpg?type=r360Fll&v=20230307034248){style="float:right;" fig-alt="Illustration of three species of Palmer Archipelago penguins: Chinstrap, Gentoo, and Adelie. Artwork by @allison_horst." width="401"}
+
+인피니트 플로와 함께 21C 한국 힙합 신 최고의 기대주 에픽 하이의 데뷔작. 국내의 내노라하는 힙합맨 총출동. 간결하지만 힘있는 그들의 랩과 정확하리만치 똑 떨어지는 라임에 빠지게 된다. (naver VIBE 제공)
+
+```{r}
+rem_css <- "에픽하이 1집 Map Of The Human Soul (2003)
+
+1.GO
+나는 Epik의 타블로, 삶으로부터 맘으로, 내 맘으로부터 라임으로, 
+직방으로 저 top으로, 입을 다물고 listen close, 피와 땀으로 만든
+flow smoke the dopest muthafuckas like Hydro 전능하신 
+자만의 사랑을 밑바탕으로 
+the rhyme pro thorough from the intro to outro Epik High = Tablo & Mithra 
+싱겁고 어둔 힙합의 소금과 빛이라 나는 Epik의 mithra, 
+별명은 이슬아 beat라는 백지에다 rhyme을 칠하는 미술가.
+엉킨 몸의 리듬을 풀어주는 안마 시술사, 또한 난 고장난 사상을 고치는데 
+기술자 이만하면 피하겠지? 아이러니 KO~~ 애시당초 픽션게임... 
+하나같이 이렇게 또 말하겠지 지독한 내 삶은 so ghetto 벗어나기 위해 
+불러 나는 노래로 Let's go, oh 생긴대로 (GO!) 너와 내 멋대로(GO!) 
+let's go and kiss the sky Let's go, oh 생긴 대로 (GO!) 너와 내 멋대로(GO!)
+let's go with Epik High Lodi dodi, 흔들어 팔과 다리 다같이 외쳐봐 
+Epik High Lodi dodi, 저 해가 질 때까지 다같이 외쳐봐 Epik High Lodi dodi, 
+흔들어 팔과 다리 다같이 외쳐봐 Epik High Lodi dodi, 
+저 해가 질 때까지 다같이 외쳐봐 Epik High mithra 본격적인 음악 생활 이제야 3년 반, 
+부모님은 작년 만 해도 믿었지 3년 만 기다려 달란 말... 
+oh 다 거짓말이 되버린 지금 현실 앞에 상념 속엔 잡념만 타블로는 바보, 
+가문의 왕따고, 그 잘난 대학교 나와서 랩 한다고? 
+내게 물어봤자 지금의 나는 미스터리. 내 사주팔자조차 예측 못한 운명의 삑사리.
+I got music 내 맘이 되찾은 날개 나에겐 지구중력보다 강한 자성체 I got music 
+일상의 짜증은 사형수 같애 그렇다면 음악은 짜증을 잠재우는 사형대 I got skill 
+실력이 식품이라면 나는 폭식가 오직 라임뿐인 기쁨이라면 OH MY GOD!! got skill 
+나는 skill의 정신 병원 녹십자 wack mc의 skill의 고통 앞에 나는 적십자! got soul 
+(얼마나?) 저 바다 속에 물보다 깊은 soul (언제나) 내 microphone을 찾아와 I got soul 
+(얼마나?) 저 태양 속에 불보다 짙은 soul (언제나) 내 작은 목에 젖어와 고개 끄떡, 
+고개 끄떡 let's go 고개 끄떡, 고개 끄떡 고개를 끄떡 끄떡거리고, go!
+2. 풍파
+인생이란 버드나무, 너는 지는 낙엽
+수천 수만 가지 잎은 너의 경쟁자며, 
+실패란 바람에 날려 떨어지는 낙엽이 된 가엾은 그대여..
+두발로 뛰어가렴, 버팔로 같이 거친 인생의 풍파도
+날카로운 창과 칼로 다진 수난도,
+자신감의 방패를 쥔 너의 두팔로 막아내고 
+다시 태어나 인생의 투사로 
+눈물로 고개를 숙여버리기엔 
+너는 아직도 채 익지 않은 벼이기에 
+힘에 부칠 땐 기대감에 기대
+미래는 기회란 생각이 참된 삶의 지혜.
+u know me and the way I live my life (my life) 
+I love it, baby baby baby baby
+(check it, we do it like dis, like dat) 
+The world is mine 
+아직 난 이 세상 앞에 존재감이 작지만 
+내맘의 나침반은 자신감
+It's time I shine
+마지막 심판 앞에서도 나 땅에 무릎이 닿지 않아
+Hell no! 오, 때때론 나조차도 절망이란 
+제페토 손에 피노키오 
+허나 절대로 never 포기 
+oh for sheezy can't leave life alone
+the world needs me
+이제 please 따라 해봐 다같이 
+난 이 세상의 밑바닥이 아닌 밑받침! 
+'난 이 세상의 밑바닥이 아닌 밑받침!' 
+한맺힌 맨발의 청춘의 힘찬 외침
+u know me and the way I live my life (my life) 
+I love it, baby baby baby baby
+(check it, we do it like dis, like dat) 
+오늘 내가 무너져도 I got tomorrow just follow 
+그대로 고독의 포로가 되지 말고 
+you know? you're king, a hero, no lie let you soul sing
+날개 펴고 높이 fly 높이 나는 새 만이 
+보다 멀리 더 많이 볼 수 있으니
+거침없이 날아가리...나는 가리
+성공이란 먹이를 낚아 챌 때까지 
+매서운 매의 눈빛으로 나는 살아 가리
+3. I Remember
+I remember back in the day (uh, yo, yesterday)
+I remember back in the day (uh, yeah, it was yesterday)
+I remember back in the day (check it out ya'll, yesterday)
+I remember back in the day (now let me take a trip down memory lane)
+내 어린 시절 주제가는 엄마가 치던 통기타 
+소리와 나팔바지 아버지의 하모니카!
+그 짙은 흑백 멜로디가/ 알고보니까 
+현실의 사막에 지친 내겐 파도소리와-같은 존재
+내 작은 손에 담겨질만큼 
+세상은 종이딱지만했는데 어느새 다큰!
+숨가쁜 나는 항상 melancholy
+어린왕자들의 story속 하나뿐인 이 못난이
+그때 교복차림의 첫사랑 그대!
+부채-바람에 낮잠자며 꿨떤 나의 꿈에 나 그품에 
+날마다 숨쉬며 살아가
+근데 왜! 슬플때마다 다 잊으려할까?
+I remember 난 기억해 
+그 아름답던 그 시절에 
+즐겨부르던 그 노래
+I remember 난 기억해
+yo 하루가 멀다 손꼽아 눈이 빠지도록 나 
+기다리던 소독차 늘 언제나! 
+내입에 달-고살던 파라솔밑달-콤한- 추억 달고나(fly so high)
+하늘로 높이 날고 싶었던 내 어린 시절 
+작은 날개 덤블링
+두려움에 섣불리 
+가질수 없으니 
+특별한 선-물이 되곤 하던 만능키(U Know?)
+여러 색깔의 빨대과자 
+사라진 여의도 광장 
+손엔 솜사탕
+-오늘도 그리다 잠-드는 소중한 (우리)
+80년대 기억속의 박-물관
+I remember 난 기억해 
+그 아름답던 그 시절에 
+즐겨부르던 그 노래
+I remember 난 기억해
+그 시절이 내 맘의 오아시스
+Oh~I reminesce 
+낡은 라디오 
+played those old school hits
+yo I miss 
+them days 난 아직도 기억해 허나 그때를 어느새 
+세월의 손이 지웠네
+기억이란 빈잔에 / 추억의 술로 가득 채우네
+입에 털어 넣음에 / 달콤한 추억으로 취하네
+잠에도 취하네 
+깨고 나면 남은게 기억의 빈잔 / 머리 아픈 현실 뿐인데(Yesterday)
+I remember back in the day.난 아직도 그때를 기억해 * 4
+I remember 난 기억해
+그 아름답던 그 시절에 
+즐겨부르던 그 노래
+I remember 난 기억해
+4. 하늘에게 물어봐
+그래 넌 쉽게 말해 좆밥 행렬의 주동자. 네온사인 가득한 밤거리로 
+주로가 골빈 여자애들 몇 명 데려나 놓고 푼돈 꽤나 주고 놀아나. 
+부모가 애지중지 키워 놓으니 되려 애비 주머니 탈탈 털어 쳐 집어넣어.. 
+욕정과 술에 만취된 니 꼬라지에 나 자꾸만 나와 헛구역질. 
+삶은 온통 다 구라 100%, 쌈은 언제나 야구 배트로,
+ 넌 늘 그렇듯이 단 하룻 밤을 자도 상대는 언제나 기네스 펠트로.. 
+Makeup을 떡칠하고 떡을치러나가네~ 처음 보는 오빠들과 순식간에 떡이돼. 
+날이 밝은 후에 후회하면 늦다네.. 남은건 텅빈 지갑 그리고 젖은 콘돔! 
+수북히 쌓인 신용카드 요금 청구서 때문에 몸팔아! 
+짧은 치마 조금 걷고서 불쌍한 인간아!! 넌 뭐가 될래 where your soul?
+ 니가 태우는 담배처럼 재가될래 새가될래 왜 휩쓸려다녀 뭐가 남아 
+니 인생에 망치로 상처란 못을 박아 니 가슴에 보나마나 뻔하잖아
+ Don't do that! 니 목에 목걸이가 니 목을 끊는 단두내! 좆까 what you got! 
+하늘에게 물어봐! 좆까 what you got! 보나마나 뻔하잖아! 좆까 what you got!
+ 잔소리마라 너는 바나나! 가나다라마바사 아! what you got! Oh well... 
+what, what you got? Oh well... what, what you got? Oh well... 
+what, what you got? Oh well... what, what you got? shut the fuck up! 
+넌 삼성동에 잘나가는 사장의 son, 언제나 편해 돈으로 쌓아가는 성!
+ 역시 니 삶에 법은 없지. 섬기는 것이 돈이기 때문에 니 상상 속엔 
+'God is me' 비싼 Ivy University 학비 투자 했던 부자 부모님의 돈은 그저 숫자! 
+차, 구찌, 프라다, 몇 백만원 값의 술잔. tattoo가 사치를 상징하면 넌 야쿠자! 
+졸업 후에 '낙하산'을 타도~ 넌 그저 바람의 노예! 삶을 스쳐가고.. 
+피카소 그림처럼 QlENfdjwls 니 생활의 각도를 똑바로 고치고 살아, 제발!!
+ 들으나 마나 매번 똑같이 반복될 이야기. 너의 그녀가 오늘 니 주먹을 피하길! 
+넌 매일 니가 칠 사기에 신중을 기하지 이젠 질렸지 아니 이젠 그 빌어먹을 입 닫지? 
+니가 빛어냈던 새털 같은 거짓과, 기가 막히도록 엮어낸 엉킨털실과 같은 오해의 조각들로
+ 만든 피난지속에서 넌! 예고된 파멸 속에서 넌! 언제나 홀로걸어.
+ 외로움에 떨어. 오늘도 너의 여자친구에게 전활걸어, 
+그녀를 불러대고, 울려대, 또 주먹을 휘둘러대. 그런게 너의 삶이야. 씨발놈아!!
+5. 10년 뒤에
+십년 뒤에 내 자신에게 보내는 편지 가을바람에
+휘말려진 한 낙엽이,한 나뭇가지 떠나 먼 나라로 
+날아가 듯이 난 내 맘의 뿌리에서 멀어질까? 
+얼마나 변했을까 자신은..
+내 자식들에겐 사랑을 받는 father?! 아니면
+가식된 존경뿐으로 입과 눈으론 공경, 속 마음론 공격
+받으며, 집은 TV drama 처럼 꾸며진 풍경?!
+풍성한 부로 나는 목표 없이 흘러가는 시간처럼
+꿈을 버릴까? 아님 아침 일찍부터 작은 방바닥에 
+신문지를 펴 일 찾아 헤멜까? death and life
+머리카락 하나 차이 만남과 goodbye..종이 한장의 two sides..
+줄자로 재봐. 삶의 끝은 멀지 않아..
+허나 나와 머나먼 너의 거린 길어 너무나..
+날아갔나 새가 돼날아 (날아가 저멀리 날아가)
+찾아갔나 내가 되받아 (찾아가 네 자릴 찾아가)
+멀어졌나 과거 속의나 (돌아와 멀리서 돌아와)
+걸어가나 이길을 따라 (따라가 이길을 따라가)
+10년 뒤에 내 자신에게 보내는 편지 20년 가득 쌓은 
+후회의 탑과 달리, 나의 신념과 믿음 앞에 나!
+절대 변치 않은 채로 흔들림 없이 살아가길..
+올바른 길을 걸어가기 위해, 나의 탁한 두 눈과 내 두 귀를 막고.
+마음의 눈으로 이상을 꿈꾸고, 올바른 기품으로 나의 삶은 숨쉬고!
+헛된 욕심과 거짓된 행실의 결과는 모두다.(전부다)
+몇 배로 내게 돌아와. 배를 채운 욕심아!
+배를 타고 떠나가! 배로 다시 태어나,
+지는 꽃보다 탐스러운 열매가 되길 비는 나는..
+달콤함으로 가득 채워진 배속처럼, 어머니의 품속처럼,
+달콤한 꿈 속에 젖어 살아가!
+날아갔나 새가 돼날아 (날아가 저멀리 날아가)
+찾아갔나 내가 되받아 (찾아가 네 자릴 찾아가)
+멀어졌나 과거 속의나 (돌아와 멀리서 돌아와)
+걸어가나 이길을 따라 (따라가 이길을 따라가)
+지나버린 시간들 속에 변해버린 나의 모습에 펼쳐진 세상앞에
+후회라는것은 절대 없게 Every gotta Stand up Never Change
+You gotta stand up, live your life, fight for the right
+of way through the way of right, every night and day
+Never Change 너와 나 모두가 너무나 높은 고난의 장벽을 넘을때
+Stand up 저 앞으로 굳게 걸어가도 뒷모습을 생각하는 현명한 사람으로
+Never Change 절대로 나 무너질때도 두 눈을 감지 않은채로 높은 벼랑으로
+날아갔나 새가 돼날아 (날아가 저멀리 날아가)
+찾아갔나 내가 되받아 (찾아가 네 자릴 찾아가)
+멀어졌나 과거 속의나 (돌아와 멀리서 돌아와)
+걸어가나 이길을 따라 (따라가 이길을 따라가)
+지나버린 시간들 속에 변해버린 나의 모습에 펼쳐진 세상앞에
+후회라는것은 절대 없게 Every gotta Stand up Never Change
+6. Lesson One
+Do we learn math to add the dead's sum?
+Subtract the weak ones, count cash for great ones?
+We multiply but divide the nation.
+Break down like fractions, send our sons away to die
+Do we learn science in defiance of faith?
+To make alliance with fakes for an appliance's sake?
+We ask for the real but make artificial intelligence 
+To make smarter kills of other's presidents 
+Why do we learn history to fix stories for the guilty? 
+Make angels look filthy and the devils look milky?
+If the victory writes the books, then what have we won?
+Are we battleships for authorship, a rich man's guns?
+Do we learn to read to receive the lies to deceive the eyes
+from seeing between the lines.
+We use words to bring forth sticks and stones to sing psalms of hate
+that fill the streets with bones. 
+Unseen or heard, a king with words (tablo)
+Lyrical assassin Make me vision the better livin' 
+Unseen or heard, a king with words(tablo)
+Lyrical assassin Make me vision(I'm the truth)
+Is our day job more than self-slavery? 
+When we're locked watching the clock impatiently
+we sweat for the dollar bills, the checks and the credit cards 
+But that dollar kills, breaks the necks of our inner hearts
+if the police are role models for the righteous 
+why does justice depend on guns and nightsticks?
+Mr. officer don't punish me, with brutality
+These streets got me singing Marvin Gay off-key
+Why do we need church to get to heaven's gates?
+Can holy water quench the thirst of those whose fates
+Started in the wrong place with the wrong face?
+Can the poor and the hungry survive solely on grace?
+Can this rap game ever bring changes?
+When MCs would rather floss a cross than be saviors?
+Will I last in this game, be blasted with shame
+Will I stand for my name and never blaspheme for fame?
+Unseen or heard, a king with words(tablo)
+Lyrical assassin Make me vision the better livin' 
+Unseen or heard, a king with words(tablo)
+Lyrical assassin Make me vision (I'm the truth)
+7. 그녀가 불쌍해
+그녀는 TV속에 Barbie Doll, 10대 아이돌 스타
+she's got it all - 마치 조각 같은 얼굴과
+소녀답지 않은 몸매의 값진 옷을 입고
+노래 부르며 춤추는 그녀는 sex symbol
+but the people don't know 무대의 빛을 벗은
+그녀 모습은 짙은 어둠에 썩어가는 것을
+she's so troubled, 거식증 때문에 적이 되버린 저울
+거울을 바라볼때 깨진 플라스틱 얼굴
+오늘 밤 그녀는 기획사 사장님의 장난감
+자존심을 팔고 사는 자신감
+이세상의 사랑을 얻기 위해 버린 자애
+외롭게 무대를 지키는 그녀가 불쌍해
+그녀를 바라봐
+그녀를 찾아봐
+그녀는 너와나
+oh why does she cry?
+그녀는 평범한 대학생 이제야 만 20살
+알고있다던 세상의 넓이는 부모란 우물 안
+그녀의 사랑이란 TV 쇼의 그늘 안
+그물 안 물고기처럼 처량하고 우울한
+그녀의 사랑은 진한 장미 향과 빛깔보다
+진한 거짓말에 붉게 물들어가
+사랑을 몰라서, 사람을 몰라서
+사랑은 미끼라, 그 사람을 믿기가
+힘든걸 알지만 그 사람 사랑을 믿으며
+남자라는 장갑차에 치여버린 그녀
+불러오는 배를 감싸며 채운 술잔에
+술보다 쓴 눈물 삼킨 그녀가 불쌍해
+그녀를 바라봐
+그녀를 찾아봐
+그녀는 너와나
+oh why does she cry?
+그녀는 밤에 사파리를 꼭 찾는
+돈 많은 사냥꾼들의 표적된 꽃 사슴
+오빠들을 사로잡는 터질듯한 가슴
+몸 파는 큰 아픔을 참는 이유 하나뿐
+돈 한푼의 허튼 꿈 그것이 기쁨이라고 믿네
+그 생각 때문에 대학교를 다녀도 쉽게
+벌수있는 돈이 훨씬 좋기에
+그녀는 창녀보다 더 못난 놈에게 자신을 포기해
+그녈 바라봐 고개를 숙인 채
+입에 정자와 같이 내뱉는 독백
+이 사회 속에 여자라는 것은 장애
+자신도 모르게 울부짖는 그녀가 불쌍해
+
+그녀... 세상이 버린 짐 받들며
+그녀... 세상이 마네킹 만들었던 그녀
+그녀는 바로 나 와 너
+그녀를 바라볼 때마다 너무나 슬퍼
+그녀는 사랑으로 맺혀진 예정된 할미꽃
+아름다움도 그 이름 앞에 밟히고
+사랑과 맞바꾼 손해 투성이 인생
+첫아이의 임신 탄생이 그녀의 Big Bang
+하루가 다르게 커가는 아이의 키처럼
+높아지는건 바깥 세상과의 벽
+달력 앞에서 기념일을 챙기며 살며시
+지나치는건 그녀의 탄생 기념일
+고생의 손에 늘어가는 주름살
+함께 늘어가는 남편 배의 주름살
+그녀가 박던 못처럼 박힌 군살에
+여자임을 포기한 그녀가 불쌍해
+그녀를 바라봐
+그녀를 찾아봐
+그녀는 너와나
+oh why does she cry?
+8. Street Lovin’
+1 2 3 joosuc & epic high
+1 2 3 we livin street life
+i was born in the city
+this is street luv
+i'll be mourned by the city
+livin in the seoul city
+it's me the t
+listen closely
+이땅의 culture
+문화를 수많은 방에 가둔것
+a dark future
+나와널 둘러싼 사방은벽 깔린것은
+bar와 night club where u luv 2 go
+틀에 박힌 이좁은곳은
+prison 2 u a soul oh no
+날개를 펴보지도 못하고
+자신의 soul
+고립의 십자가로 못박고
+now get up stand up
+붐비는 거리로
+숨쉬는 도시 속에
+수많은 people 사이로
+it's the crossroad
+신과사람의 교차로
+u've got 2 know
+지상낙원은 따로없다고
+this is u a barrio
+카오디오 볼륨을 더위로
+everybody say oh
+it's a streetparty
+e p i c yo
+everybody 거리로 capital j
+it's a streetparty all day
+it's a streetparty
+e p i c yo
+everybody 거리로 capital j
+it's a streetparty all day
+all night ok u
+move u a body
+this street I told ya 바로 어머니
+이거리 말했지 바로 아버지 그래
+우연이 아닌 필연이다 싶었지
+절대돈으로 환산할수없는 값어치
+지금으로부터 약 8년전
+나와 깊은 사랑에 빠지게된
+이 culture와의 만남
+700만화소를 훨씬 뛰어넘는
+digital camera 보다
+생생히기억이 살아나
+oh ma sweety 고향은 거리
+태어나서 자라나서
+clean or dirty
+whatever 상관없어
+있는 그대로
+솔직하게 살아가 hiphop
+hiphop 내 사랑아
+paris london tokyo japan
+소리없어 퍼져 번식해 세계를 제패
+ayo epic high keep it tite
+다함께 거리로 나가 지금
+let's get high
+it's a streetparty
+e p i c yo
+everybody 거리로 capital j
+it's a streetparty all day
+all night ok u
+move u a body
+it's a streetparty all day
+everybody 거리로 capital j
+it's a streetparty all day
+move u a body
+길거리 행진 one two three
+girl 이 넘쳐나는 거리가
+우리의 mainstream
+beatz in da soul
+soul in da street
+들리니 kick 과 snare
+마찰음의 scream
+too many people 느껴보길
+왜 넌 하루종일 game과 통신
+얻은건 붉은 코피&커피속
+카페인 반폐인
+은둔생활접고 터트려 샴페인
+앞좌뒤우 들어봐
+거리속의 늑대와
+여우의 사랑 구걸가
+팔짱낀후 둘러봐
+굳어진 네 어깨완 달리
+웃음만 굳어가
+온실속 화초보단 거친 삶의 잡초
+인파속 소란함도 독백보단 낫고
+음악과 이야기를 낳는곳
+그대가 살아갈곳 거리로 come on
+all my emceez
+freestylin boombox or beatbox
+we rockin epichigh
+jc street luvin
+it's a streetparty all day
+everybody 거리로 capital j
+it's a streetparty all day
+move u a body
+it's a streetparty all day
+everybody 거리로 capital j
+it's a streetparty all day
+move u a body
+it's a streetparty all day
+everybody 거리로
+it's a streetparty all day
+everybody 거리로
+it's a streetparty all day
+everybody 거리로
+it's a streetparty all day
+everybody 거리로
+move u a body
+9. Love Song
+처음 느낀 그대 눈빛은 혼자만의 오해였던가? 
+처음 느낀 그대 눈빛은 혼자만의 오해였던가?
+해맑은 미소로 왜 나를 바보로 만들었는가. 나의 그대여?
+나의 끝없는 기다림의 끝에서 널 기다린 시간이 자그마치 6년이란 걸 넌 아니?
+만일 시간의 고갤 돌릴 수 있다면 그때로..
+같은 공간에 숨쉬던 그대로 
+머물러 다신 후회치 않아!나 감히 말할 수 있어! 사랑이 내 삶이라고..달리
+내세울 것 없는 초라한 인생의 밤이 지나
+사랑이란 태양이 뜰 거야 darling..
+잊으려 지워도 선명한 네 이름, 인정이란 사랑과 인생의 다른 이름.
+나는 지금 사랑의 힘겨움과 힘겨루기를 이제는 시름시름 앓아누운 비글.. 
+또다시 부르는 내 love song(love song)
+내 꿈에 다시 잡은 너의 손(너의 손)
+또다시 부르는 내 love song(love song)
+내 꿈에 다시 잡은 너의 손(너의 손)
+처음 느낀 사랑때문에.. 이제는 이별때문에.. 많이 아프지만 나는 괜찮아..
+처음 느낀 사랑때문에.. 이제는 이별때문에.. 많이 아프지만 나는 괜찮아..
+난 아직도 널 사랑과 증오의 저울로 재고..
+오늘도 또 나만을 비춰주는 거울을 깨고,
+날 슬픈 노래로 바보같이 울리고..그대가 쳤던 피아노 멜로디에 기억의 귀 기울이고,
+here we go - it's just another love song, you see 나 홀로 반복되는 이별의 고통 : 
+to be or not to be? yes or no?
+언젠가는 지워지겠지?? 예수 손바닥의 흉터보다 깊게 패인 메모리.. 
+병든 아버지 곁에 함께 아플 때 넌 바쁘게 다른 남자들의 품에 안겨!
+겨울밤 화로에 불을 피듯 바람을 폈던 너..너와 1년 동안의 만남이 내게 가르쳐준건,
+ love's not secure.
+자물쇠도 녹이 쓸고 아무리 pure한 뜻이 담긴 책도 퇴색되고. 
+check yourself my peoples, 주변을 지켜봐!
+기어 다니는 자의 달콤한 혀를 믿지 마! 
+내가 한발짝 앞으로 다가설 때 너는 두 발짝을 뒤로..이젠 행복해?(그래)
+he's your damn hero 그는 명품관 나는 벼룩시장.
+어서 태풍바람에 촛불처럼 재빨리 꺼져!!꺼져버린 불씨, 
+불빛..나 굳이 말안해도 충분히 알겠지? 
+내 숨이 멎는 것처럼 얼어붙은 사랑의 아픔! 그 아픔마저 그리운 내가 기댈 곳은 너의 품..
+10. 고독한 사랑
+고독이란 외로움이 만든 고통, 고통이란 잉크를 백지위로..
+고요한 파도 위의 잔잔한 파동처럼 흔들리는 나의 마음은 가곡은 믿음도 미움으로,
+사랑 그리움으로 어느 곳 하나 마음 둘 곳 없이 사라져가고..
+난 들판위에 선 홀로 허수아비! 평온함이란 단언 내겐 전무하지.
+마치 블랙홀과 같이 깊은 수렁에 빠진 내 영혼의 발자취엔 늘 언제나 허무함이..
+이 기나긴 고독이라는 길 위에 내가 뿌린 독백이라는 시는..나의 
+삶의 연장 선에서 불러 날!고독이라는 시의 묘지 위에 묻어 날..
+Leave 'em empty life is over Days are shorter. nights are colder years of depression...
+그녀가 미워!하지만 늘 그리운..love is pain!
+그년 날 잊어 가지만 늘 그리는..love is pain!
+사랑은 늘 미움 이란걸 사고, 사람은 그리움 이란걸 알고..간혹, 나는 감옥의 어둠 속에서 살고
+그리움이란 창고엔 미움을 채워가고..잃어가는 시력처럼 잊어 가는 기억..
+잃어버린 어린 시절 애틋한 사랑의 기억?!
+나는 사람의 그리움 아님 사랑의 대한 미움이라 말했지.
+아마도 나는 지금 아주 쉬운 퍼즐 앞에 눈 뜬 장님. 
+아님 나는 trouble 이란 등껍질을 짊어지고 사는 turtle!
+미움이란 건 사랑을 잡기 위한 덫! 그리움이란 벗으로 사람은 사는 것!!it's Love..
+11. Free Love
+난 오늘도 사랑에 몸을 던지네 난 오늘도 사랑에 돈을 버리네
+내 주머니는 zero, 내 일생활은 ghetto 도대체 사랑이 뭔데, Tablo? I don't know...
+지식도 free,진실로 free,근데 왜 맘의 피난지란 사랑은 비싼지..
+내 맘과 머리보단 지갑이 찬 것이 사람의 값어치를 매기는 사치스런 society!
+헛된 소비, 내가 여자들에게 썻던 돈이 쌓였다면 높지 않아 산꼭대기.
+괜히 공들엿지..결국엔 그녀가 있던 자리와 주머니 속에 남은 것은 먼지.
+so what u wnat lady?(다이아몬드)okay! 그보다 큰 다이아는 내 맘속에 있는데?
+hey,what u want baby?(a big house) okay! 그보다 넓고 따뜻한 두 팔의 품에 안겨줄게. 
+my soul sistah, respect yourself please. on the street,
+돈으로 살 수 있는 사랑은 깔렸으니 ddollar뿐이, 
+네가 원하는 것이면 be gone!진정한 사랑을 원한다면 let's get it on~
+오늘도 약속대로 그대를 나는 보고 싶어도...
+오늘도 텅빈채로 내 작은 주머니는 나를 바라보고...
+오늘도 난 so ghetto 돈 때문에 사랑을 도피하고..let's get in on tonight!!
+
+난 오늘도 사랑에 돌을 던지네..난 오늘도 사랑에 목이 메이네..
+내 주머니는 zero, 내 일생활은 ghetto.
+도대체 사랑이 뭔데, Mithra?I don't know, yo. 
+연락은 칼 같이, 만남은 불 같이. 불만이 커지면 칼은 물 베야지. 
+우리의 메아리 같은 만남에 난 배앓이. 그녀는 구멍 난 저금통 빨간 돼야지..
+okay,어차피 흔한 coffee 한잔 살만한 돈이 없다면 남자가 아니지!!my darling.
+내가 널 여왕처럼 떠받들어 줄 테니 지금 네게 필요한건 바로 기다림.
+그런데 why? why! why? 늘어가는 잔소리, 날카로운 눈빛에 뿜어 나온 한숨이..
+왜, 내 맘 몰라주는 건지 난 너무 답답함에 굴뚝같은 연기만, 
+내가 원했던 사랑은 너의 이해심 반,
+그리고 나의 관심과 사랑이 반과 반, 
+사랑은 등산처럼 험난하고 힘들지만, 
+서로를 감싸 안아 준다면 그리 힘들지는 않아.
+love is free, love is free, love is free, 주머니가 아닌 맘,
+hey love is free, love is free, love is free,다가와 오늘밤,
+hey love is free, love is free, love is free,주머니가 아닌 맘,
+hey love is free, love is free, love is free,내게 와 오늘밤, hey
+12. Get High
+I'm tryin to keep it simple, 많은 것은 필요 없어! 
+pad and pencil, 내 fan and peoples 내곁에 있다면 난 비타민조차도 필요 없어!
+비싼 차도 됐어. 비트가 나의 버스, yall!
+걱정없이 살 수 있는 이유는? 
+모든 가식 지우는 내게 힘주는 culture. like father, mother and 진정한 친구!
+바다같은 인구 속에 찾은 독특함의 진주
+키 크는 때는 제때 밥을 멋을 것, 이것 저것 그래도 폭식은 절대로 좋지 않은 것! 
+soul고플때도 똑같은 태도. 
+절도의 매로 제대로 자신을 다스리는 건 바로 진정한 힙합의 lover가 갖고 있는 버터칼. 
+so'spread'the love like gospel!
+아스팔트보다 튼튼한 문화로 전진하네 난 나만의 든든한 두발로!
+High! I'm Epik high tonight I'm never comin' down 
+I'm never ever gonna stop rockin' this town Higher than the morning light
+I'm never comin' down 
+I'm never ever gonna stop droppin' this sound 
+rhyme, flow, lyric, beats! 하나같이 내게 없어서는 안될 삶의 의미.
+Mc, Dj, Tagger, b-boys!마치 Dawn Hill같이 언제나 나와 함께 하지!
+나를 봐. 친구!!주르륵 흘러 내린 바지 절대 부끄러워 하지 말라구!!
+우리나라 hiphop인구 전부 너의 background! 가끔은 책을 버리고 헤드폰의 볼륨 업?!
+절대로 나쁘지는 않아..수학 노트속 수많은 공식들을 rhyme으로 지워 내는 것?!
+또한 나쁘지는 않아. 흥얼 거릴때는 soulful 하게~밤새 
+chillin!my darling. every night! party tonight!!즐기는 삶? hiphop!
+부푼꿈에 점점 더 달아 오른 내 맘..
+It's the E, the P-I, K to the High 
+it's Epik High doin' it live and it's simple
+그 작은 쉼표없이 달려가는 people, just stop!삶의 한문장이라면? 우린 느낌표!
+no detour - 행복은 항상 지름길로. 뒷길로 필요없는것들은 모두 버리고! 
+too many questions in this world, hey can't you see? let your melon remember Lennon, 
+let it be high & low! my flow바람타고 날아 올라서.. 두팔을 벌리고!
+너무나 답답 하기만한 일상속에 반전을 위해.soul찾아 떠나는 내 맘은.
+부푼 풍선보다는 풍선 속 산소보다도 신선하거든! 그 보다 아름다운 네 맘은?
+그 이유는..넌 이미 hiphop이란 놀이공원 속에 있거든!!
+13. 유서
+dear life, out go the lights, i see christ in my mind's eye,
+세상과 마지막 인사 내 작은 책상에 남기는 편지 번지는 눈물과 짙은 먼지라는 창틀안에 scene 
+하늘아래 길고긴 길을 걷다 내가 얻은 것을 다 남겨버린 채로 나는 떠나가네 서랍속에 남긴 사진들 
+공책들에 남긴 글 작고 큰 삶에 흔적들 끝을 준비를 못한 채로 
+언제나 내멋대로 살아왔기에 남길 가치는 제로 
+한심해 가족에게 남길게 랩이란 쓸데없이 헛된 글들 뿐이라는게 
+here i go 이젠 어디로 for my people this hollow story 만을 남기고 
+i'm so sorry but it's mandatory 재가 되기전에 죄가 되는 나 time to say goodbye
+i close my eyes and fly away 이제 난 떠나네 
+here we go 어디로 here we go 어디로 
+here we go 저 어둠속으로
+i pray the lord my life to take 이제 널 떠나네 
+we must go 어디로 we must go 어디로
+we must go 저 평온속으로
+내 인생의 일기 마지막 한장에 흔적을 남겨야 하지만 벅차네 많은 사람들이 이글을 
+볼때쯤이면 내 뜨거웠던 나의 피는 이미 차디차게 사랑하는 아버지와 두 어머니 마주잡은 손으로 
+내 주검을 씻나니 절대 울지말고 이 땅에 묻지말고 얼어붙은 나의 몸을 불속에 던지고 
+흩어지고 흰 뼈가루는 파도에 태우고 내 발 애마 매직은 가오 니가 갖고 
+또 만들다만 뮤직은 얀키 가져가고 때묻은 아끼던 악기들은 언두에게로 
+내 베개로 깊이 숨긴 통장 그대로 어머니께로 내 인생의 모든 노랠 생모께 바치네 
+복받치는 내 슬픔 그대로 내 맘은 어린 그때로 추억들이 흔들리네 번뇌에 눈물에
+나는 모두에게 미안하게 생각해 부모님들 가까운 벗들 잘 읽어봐들 기회는 한번 not둘 
+내 인생에 받침줄 하나 둘 내 머릿속 깊은 곳에 기억해 내 마음이 왜 뭉클해질까 게임오바 
+라고 내가 생각해서인가 listen 인생간에 미로 한컷에 코미디 프로 짧은 인생에 투어 
+이제 마쳐야 겠고 oh my soul 힘든 몸무게는 톤도 더 되게 느껴져 왔고 
+한통에 레터로 맘에 글을 내 뱉어 난 이제 곧 먼지가 될터 oh dont egnore me 
+친구들 하느님이여 이제 나를 바꾸어 내 죄를 씻을 테니 모두가 행복하길 바라니 
+내 고이 편히 잠들수 있게 모두 모여 내 얘기를 한번 해줄래
+내가 지금 적어낸 이 말들이 내 마지막 작품이라 남는 건 아쉬움 나를 태워 한가치 담배처럼 
+뭔가를 남기려 했어 마치 필터처럼 뒤돌아보니 남은 건 필터를 담은 
+재떨이와 같은 나의 rhyme note 뿐 아직 더 남길 것이 있다면 남은 건 첫사랑에 대한 나의 미련들 
+나의 가족과 친구모두 흐르는 눈물을 감추어 어린아이처럼 흘리는 
+그 눈물에 나 건널 통곡의 강은 깊어 가는 것 그저 마지막 바램이 있다면 
+어디로 가는지도 모르는 영혼에 그 길위에 나의 기억을 뿌려줘 마치 비처럼 아니 꽂비처럼
+14. 막을 내리며
+내가 한 방울의 물을 원할 땐 바다를
+또 내가 작은 한 알의 모래를 원할 땐 사막을
+You made it mine in my 짧은 단막극 같은 lifetime
+그 안에 수많은 관객들과 스텝들에게 감사의 축배
+이 노래 내 주님께 첫 재로
+내 영혼의 부피와 굵기 몇 배로
+날 소말리안 배부터 스모 배로 채워주고
+죄로 병든 내게도 만능 치료 agape
+또 때론 너무나 큰 무게 아틀라스의 두 어깨도
+절대 들 수 없는 짐을 짊어진 아버지께
+이 길에 무릎을 끓고 지칠 때마다
+내게 남자란 참뜻을 가르친 당신께
+I love you i thank you and to my ma who makes my sky bluer
+Than bb king's tunes you're my true love
+언제나 모든 걸 내게 주신 어머니께
+I dedicate my life
+This is just an outro I be singin deep
+From my soul it goes a-yo a-yo a-yo a-yo ay
+This is just an outro I be singin deep
+From my soul it goes a-yo a-yo a-yo a-yo ay
+(Check one two) You'are my destination
+(I thank you) It's a dedication
+(Check one two) You'are my destination
+(I thank you) It's a dedication
+철 없던 그 때 고2 괜한 나의 호기심이
+날 인도한 힙합으로 인해 대학 포기
+어버이 가슴에 못을 박으며 부린 오기
+내 주머니 속 고이고이 접힌 색종이
+나의 고집이 부른 배부른 소리에
+붙은 불은 열정의 숲을 태우고
+푸르고 푸른 산을 태운 흔적을 메우는 사람은
+다름아닌 나의 부모님들 계수나무 그늘 같은 두 분
+2000년 8월 시작됐던 작업 dyno와 난
+흑기사가 되어 강남역부터 신촌 under 바닥을 지나
+2003년 epik으로 시로 다시 써 내려 가는 그의 달력
+음악만 전념했었던 지난 몇 년
+그동안 잊고 살았던 평범한 그 단어
+이제야 감사라는 열병으로
+나를 감염시키는 j-win a.k.a dyno soul
+This is just an outro I be singin deep
+From my soul it goes a-yo a-yo a-yo a-yo ay
+This is just an outro I be singin deep
+From my soul it goes a-yo a-yo a-yo a-yo ay
+(Check one two) You'are my destination
+(I thank you) It's a dedication
+(Check one two) You'are my destination
+(I thank you) It's a dedication
+JWin to the top yes yes yo
+개코 to the top yes yes yo
+최자 to the top yes yes yo
+Tukutz hiphop one luv
+T B N Y to the top yes yes yo
+DoubleK to the top yes yes yo
+디기리 to the top yes yes yo
+DJ 혼다 hiphop one luv
+Pe2ny to the top yes yes yo
+JC to the top yes yes yo
+DT to the top yes yes yo
+Baby T hiphop one luv
+리쌍 to the top yes yes yo
+Buga Kingz to the top yes yes yo
+MP to the top yes yes yo
+The Movement hiphop one luv
+DConnection to the top yes yes yo
+Airport to the top yes yes yo
+Apato to the top yes yes yo
+Foreign Objects hiphop one luv
+My family to the top yes yes yo
+광명 crew to the top yes yes yo
+My fan to the top yes yes yo
+Epik High hiphop one luv
+
+15. Watch Ya Self
+Verse 1:Mithra 眞)
+Uh,Yeah!!!
+나는 비트로부터 영감을 떠올려
+일상의 삶을 펜으로 비트위에 올려 Rap에
+Rhyme의 흐름은 내면으로부터
+숨쉬는 감정 변화를 통해 입으로 내뱉어
+가사의 깊이보단 간지로.
+이 난지도 같은 바닥을 버티려는 너는 애물단지고.
+곡마다 매번 같은 얘기로 객기도 아니고.
+같은 소리만 지껄이니 넌 (재미로)
+내눈엔 가식, 모두 Fake MC.
+(마치)장미 넝쿨과도 같은 Hip-Hop Scene
+(단지)Rap은 너를 포장하기 위한 포장지
+뿔 없이 사슴 흉내내는 너는 고라니
+나는 호랑나비 외로운 개똥벌레
+들어주는 이도 친구도 믿음도 원래
+없던 나에겐,(절대) 형제란 걸레
+처럼 돈에 눈먼 추한 그녀처럼 뻔해.
+에픽하이에 깜짝 Guest 디기리 출연했네
+내 랩 듣고 있으면 모두들 놀라. 
+가짜 힙합만을 듣고 있던 애들은 
+절대로 내 랩을 이해할 수는 없잖아.
+Yo,TV속에 나오는 건 모두들 힙합이라 뻥치는
+댄스가수 밖엔 없고,
+또 어느덧 아마추어 꼬맹이들 언더그라운드라
+뻥치며 다니고만 있고, Uh-Ha! 이런,이런,
+그러니 니 귀가 더러워질 수 밖에는 없지
+이젠 내가 니 귀 청소를 시켜주기 위해
+멋쟁이 내 Rap Flow로 널 완전히 
+녹여버릴 테니까 준비하고 있어봐
+몸을 깨끗이 씻고 바로 침대시트 새로 갈고
+그리고 이쁜 새잠옷 입고 속옷입고
+이제 또 내가 널 위아래부터 
+확실히 눌러줄테니까,빙고!!!
+Yo! I want a mic,
+Tryin' to get another rhyme back!
+너와 나의 기분나쁜 Combat,
+그 팔에 Rolex 흔들어봐 좀 부수게!!!(어떻게?)
+내 다릴 왜 잡아? 내가 클수도 없게
+(빽빽줄?) 돈이 급해 이리저리 왔다갔다 하는 기계
+기분이 몹시 많이 나는 좋지 않은 상태 
+내가 느낀 (feel리아 괜한 홀리필드)
+내 발밑을 지나가는 것이 바로 내 길.
+W.A.C.K 너무나 많은 것들 (fuck that) 
+더러워진 Hip-Hop Scene에 자리가 잡히노?
+더 높은 곳을 향해 내 몸은 이대로 Swallow!
+인생의 말로는 아주 좋지 않은 멜로
+Fuck U!!!{외긴 아니고 씨댄 물은 마이크를 
+캔디보스! 바이러스!} All Star가 되기 위한 {변화구's}
+Get My Gun, SM-58! 가볍게 잡은 
+5분안에 잠든 내 {Rap reggae mo' Feel it go}
+Yeah,Yo!!! 너도 선수가 되고 싶어? Huh!!!
+그럼 Enter! Double 이야 Killer 선수 관리 Center!
+Welcome, But 우선 니 이빨은 썩었어,Son!
+그러게 평소 마이크로폰에 닦지 그랬어?
+비린내가 심해 Beat에 빨아 빨리
+그래야 가시내들이 알아서 달라붙지 잘알지
+선수되는 길은 힘들어 Like 감옥살이
+난 그런 선수들의 감독나으리
+내 친구들은 부시 가르침을 병력으로 착각해
+널 위한 걸 버리는 건 쎈세이과 포기.That's I!!!
+Not even eating 니엄마가 해준 요리.
+뻐꾸기 {I tick 차로} 날려 높이!
+Fuck you!{Can bitch!} 뻐끔만거리니 넌 벙어리
+어리버리 선수 아닌 선수 Wanna be a B.G.
+작업이란 원래 열정,정력을 쏟아 붓는 걸 Like 빠구리!
+이상 Double이의 넋두리!
+Yo! {You는 renegade Rapper 뱉어 너가 외려 왜 쳐?}
+연예계 여자 얼굴처럼 이세상을 뜯어고쳐! 
+많은 시간을 거쳐 만들어진 
+Hip-Hop Culture의 Future는 
+Epik High가 펼쳐가는 길에 맡겨
+기가 막혀 Rush Hour길 같이
+wack mc들이 마구간보다 말이 많은지
+말나왔으니 따지자면 니넨 정치와 
+'god'와 똑같지. '거짓말'로 돈벌지. (Bitch,Please)
+차라리 공CD를 팔어. 
+니 좆같은 실력 쌓아봤자 바벨타워!
+왜 그따위 쓰레기 Rap으로 멀쩡한 Beat를 망쳐?
+(제발 닥쳐!!!)
+M.I.C는 노래방에서나 잡어!!!
+Sucker 니 같은 Rap, I don't give a Fuck!
+니 Rap은 불면증 환자들의 치료법! So give up!
+Get down when I flex da sound!!!
+You speak so poor!!! 
+Your microphone check!!! 
+It's Bounced!!!
+
+"
+```
+
+### 3집 Swan Song (2005. 10. 1.)
+
+![](https://musicmeta-phinf.pstatic.net/album/000/034/34635.jpg?type=r360Fll&v=20230307034214){style="float:right;" fig-alt="Illustration of three species of Palmer Archipelago penguins: Chinstrap, Gentoo, and Adelie. Artwork by @allison_horst." width="401"}
+
+신선한 음악적 충격으로 다가왔던 에픽하이의 새 앨범. 에픽하이 3집 \[Swan Songs\]!! 이번 3집 앨범에도 주변의 많은 실력파 아티스트들과의 유대도 여전히 돋보이는데 이번 에픽하이의 3집앨범 \[Swan Songs\]은 힙합 본연의 느낌은 물론 다양한 음악적 장르를 포괄하려는 시도가 돋보이는 힙합앨범이다. 흑인음악의 기본적 성향 외에도 Electronica와 Rock, Folk, R&B, Jazz등의 신선한 시도가 듣는 이의 귀를 즐겁게 한다.
+
+(naver VIBE 제공)
+
+```{r}
+swan_css<- "에픽하이 3집 Swan Songs
+1. innisfree
+2. Yesterday
+It's so hard to say goodbye, to yesterday..
+이젠 모두가  내 비젼에 기대와 내기 거네
+불타 네 시선에 질투와 배신 편애
+허나 데뷔전에 역사가 내 뒷편에
+라디오와 TV 스타가 되기 전에  
+그때 기억해, 내 속의 이 작은
+행복의 시작을 내 손의 진땀을
+낡은 공책속에 빈 칸을, 내 혼의 빈잔을
+채워가면서 깊은 고뇌속의 시간들
+잠을 뒤척이며 밤을 시로 지켜
+갈수록 짙어진 검은 소리 속에 미쳐
+벗어나고 싶었던 성공의 질서
+숨막혔던 학업에 지쳤던 영혼의 쉼터 
+그때부터 내 삶을 갱신했죠
+가족을 눕혀버린 신이 때론 괴심해도 
+세상이 친구를 뺏고 사랑이 배신해도
+내 펜의 검은 눈물로 대신했고
+한맺힌 내 flow  내 뱉고 힙합을 위해서
+다버리고 let it go 막다른 길에서
+돌아섰고 돌아봐도 그 느낌 잊지 못해
+한숨은 쉬어도 내 꿈은 절대 쉬지 못해
+타락한 시대속에, 성공을 쫓다가
+영혼이 고파 나 평론의 교차가 언젠가
+내손에 못박아도this is all i got
+내 작은 소망과 microphone 하나
+그땐 너무 어려서 가진돈이 없어 
+급식비를 털어 먼 거리도 걸어나는
+강남을 오갔고 학교안에선 
+늘 배가 고팠고 잠을청했어
+수업의 반은 잠 반은 공책속 Rhyme 
+밤은 작업실생활 새벽은 리듬속 삶 
+모든게 가능했던 그때
+하지만 떠나보낸 그대 
+힙합에 눈뜰때
+세지못할 기억의 자산 속에서 
+베지못할 실없는 자만 통해서
+절대 그 누구도 꺾지못할 
+나를 키워내며 부족함을 보탰어
+시간이 흐르고 친구들 대학으로 
+언더그라운드속의 나는깊은 절망으로
+똑같은 땀으로 살아도 남는 한으로
+하지만 현실앞에 난 알바생 [PC방으로]
+잠시나마 나 후회가 남아 다시 나 
+되돌아간다해도 미련이 남아
+돌아올것을 알기에 또 참아 
+후회는 내 옷깃잡기에 쫓아가
+이제 햇수로 5년이 되가는 
+이 삶도 열정도 오염이 되감을
+느끼지만 또 나는 끝없이 달린다 
+여전히 펜으로 백지위를 달린다
+let the dj tonight save your life
+like a ray of light, create insight day and night
+every page I write, yo i payed the price, 
+so my fate is bright, slay the mic,
+fight for the right of way through the way of right
+That's right 수많은 땀 시련의 삶 눈물의 강
+잃어감이 더 많았던 시간에 묻던 질문의 답 [내 해답]
+Everything's gonna be alright 
+I'm Okay 긴 밤 지켜내 My life
+3. Lesson 3
+check the mic 진화된 rhyme
+새 시대를 위한 신화는 my mind
+창조와 변화 흐름은 내 flow
+강,약 내 뜻으로 fast or slow
+관중 앞에 난 희대의 살인마
+전율과 충격엔 말문이 막힌다
+네 두 팔은 마른 공기를 가르고
+심장은 요동쳐 박자를 달린다
+달콤하게 내 음성안에 중독
+트로이 목마 처럼 난 대뇌안에 숨고
+잠식해 네 깊은 탄식의 
+빈 상식에서 높은 양식의 
+놀이터 속에서 느껴 ma soul
+내 혈관 속 흐름은 진공관 속
+질 수 없는 꽃 영원한 존경의 봄
+난 힙합이란 도시위를 감싸주는 돔
+gotta come together right away..
+then we got to work to light the way..
+서사적인 높음으로 빛을 가리켜
+혁명가의 불씨가돼 길을 가르쳐
+gotta come together right away..
+then we got to work to light the way..
+규칙없는 거리위에 법을 내리쳐
+세상이란 얼굴위에 침을 내뱉어
+microphone이 켜지면서 끝내 너의 거짓명성
+저 지평선 비틀어 그려 오선지 경선
+난 겁이 없어, 이 시대의 목-소리
+겉과 속이 영원히 korean mc
+여전히 풀지못해 내긴장을
+서사시로 폭발 할 듯 한 심장을 
+내 사상에 뿌리깊은 역사의 핍박을
+일장기의 붉은 점은 내 조상의 핏방울 
+피땀을 모아, 이땅을 고아로
+살아왔던 아버지 닮고파, 세상은 몰라
+내혼이 고파 so i'm microphone checkin'
+난 백인 들의 세상의 유색인
+무책임 그것은 학자들의 함정
+내뱉어 꽉 다문 내 감정 내 감성을 파고드는
+약자들의 함성 내 랩에 담아내 발성하는 박자위의 탄성
+gotta come together right away..
+then we got to work to light the way..
+서사적인 높음으로 빛을 가리켜
+혁명가의 불씨가돼 길을 가르쳐
+gotta come together right away..
+then we got to work to light the way..
+규칙없는 거리위에 법을 내리쳐
+세상이란 얼굴위에 침을 내뱉어
+비교 불허 나와 너 사이 
+바다와 강 차이 사자와 양 ( why? )
+내가 내 뱉은 말들로 나이테를 만들어
+너의 낙서 보다 많은 나이보다 많은 걸
+셈이 샐 수 깰 수 없는 나의 생각
+샘에 뭉쳐 힘을 더해도 모두 발을 뺀다
+얕아 낮아 이상없는 자아
+너 보다 더 비싼 목걸이부터 팔아
+현란한 혀뿐인 혁명가
+얼마나 허탈한 랩을 내뱉었던가
+눈을 떴어 나, 모순을 벗어나
+변해가나 마나 손을 뻗어봐
+나는 MC, I spit what i see
+what i see is hipocracy and 
+wannabe Socrates
+차라리 나를 욕해 어차피 난 나를 욕하는 너를 대표해
+gotta come together right away..
+then we got to work to light the way..
+서사적인 높음으로 빛을 가리켜
+혁명가의 불씨가돼 길을 가르쳐
+gotta come together right away..
+then we got to work to light the way..
+규칙없는 거리위에 법을 내리쳐
+세상이란 얼굴위에 침을 내뱉어
+gotta come together right away..
+then we got to work to light the way..
+서사적인 높음으로 빛을 가리켜
+혁명가의 불씨가돼 길을 가르쳐
+gotta come together right away..
+then we got to work to light the way..
+규칙없는 거리위에 법을 내리쳐
+세상이란 얼굴위에 침을 내뱉어
+gotta come together right away..
+then we got to work to light the way..
+서사적인 높음으로 빛을 가리켜
+혁명가의 불씨가돼 길을 가르쳐
+gotta come together right away..
+then we got to work to light the way..
+규칙없는 거리위에 법을 내리쳐
+세상이란 얼굴위에 침을 내뱉어
+4. Fly
+힘들죠? (힘들죠) 오늘도 잔인한 세상은 너를 비웃고
+거울 앞에서도 기죽고 또 홀로 술잔을 비우고 
+don't know where to go 단 한번의 실수로 모든 것을 잃고 
+고개를 숙일땐 손을 모아 날개를 피고 You can fly
+눈을 뜨며 맞는 아침 똑같은 방향뿐인 삶의 나침반
+만만한 세상에 쉽게 무릎꿇고 쉴새 없이 신세
+타령만 아련한 옛 꿈을 쫓던 가련한 
+두팔로 화려한 날개를 피고 
+You can fly Higher 저 하늘위에 새들보다
+You Can Fly Higher 단 하나뿐인 그대와 나 
+Fly (My Baby) 세상이 뭐라고 말해도
+Fly, fly, get em up high, 누가 뭐래도 가라고 go go
+Fly (My Baby) 사랑이 널두고 떠나도
+Fly, fly get em up high...
+Fly 그대가 가진것은 없어도
+You Can Fly 사랑이 차갑게 널 버려도
+You Can Fly 아픈가슴에 숨이 멎어도
+You Can Fly You got to fly sky high!
+눈을 뜨고 바라봐도 빛은 없고 
+꿈을 꾸며 살아가도 길은 멀고
+내 뜻대로가도 숨을 몰아 쉬었고
+진실을 말해도 돌아섰죠
+아직도 찾는것을 못찾았고 
+아무도 너를 사랑하지 못한다고
+낙오감에 빠져도 Never die 
+날개를 피고 Let's go everybody Fly! 
+You Can Fly (누가 뭐래도)
+higher (나는 절대로)
+저 하늘위에 새들보다 (내 꿈을 포기못해)
+You Can Fly (누가 뭐래도)
+Higher (나는 절대로)
+단 하나뿐인 그대와 나 (내 꿈을 포기못해)
+Fly (My Baby) 세상이 뭐라고 말해도
+Fly, fly, get em up high, 누가 뭐래도 가라고 go go
+Fly (My Baby) 사랑이 널두고 떠나도
+Fly, fly get em up high...
+괜한 한숨에 지워지는 단한번의꿈 
+몇만번의 시도위에 갈라서는 문 
+눈을 뜨며 살아감에 보여 희망의 연기가 
+모두 털어날려버려 비관의 먼지 다
+역시 나도 때론 괜한 겁이나 
+천천히 가 왜 꿈을 쉽게 버리나 
+때론 낮게나는 새도 멀리봐 
+어두운 밤일수록 밝은별은 더 빛나 
+Fly 세상이 뭐라고 말해도
+Fly 사랑이 널두고 떠나도 EPIK
+Fly 세상이 뭐라고 말해도
+Fly, fly get em up high...
+Fly 사랑이 널두고 떠나도
+Fly, fly get em up high... EPIK
+5. Funkdamental
+″Yes Yes Ya'll...″
+″To The Beatz Yo...″
+
+″Yes Yes Ya″ll...″
+″Make it place to this...″
+6. 그녀는 몰라
+그녀가 나를스쳐가 왠지 슬퍼보이는데
+언젠가 나를 돌아봐 웃으면 좋겠는데 난 모르는데
+사랑이란 달콤한 lie 맘에 담고 자라
+산소같아 입에 달고 살아 그대 몸과 맘을 줘도 다 모잘라
+근데 자꾸 만나 그댄 바보같아 왜 그남자 앞에 고개숙인채
+무슨 죄인처럼 굵은 쇠사슬에 묶인채 이제
+숨을쉬면서도 숨죽인채 넌 그 사람의 수많은 여자중의 하나뿐인데
+눈치채지못해 너의배꼽에 그의 손가락이 탯줄이 되곤해
+사랑의 뱃속에 순결한 애기처럼몰라 그는 그 끈을 쉽게 끊을수있는것조차!
+오오오 오오오 오오
+그는 너를 사랑하지도 않아 
+오오오 오오오 오오
+그는 너의 이름조차도 몰라 왜 몰라
+넌 잘 몰라 남자를 몰라 하룻밤이 
+지나면 니 이름 조차 몰라
+그냥 널 골라 외롭다면서 졸라 가지고 
+놀다버리는 그 악운이 돌아
+너에게 온걸 넌 행운이라 믿지 쉽지널 
+더듬기란 춤이라며 깊이 니몸
+구석을 손대 우리 Bar로갈까? 
+말로서 널 사로잡다 손을 잡고 바로나가
+그런 남자믿지마 내가 한말 잊지마 
+외로움속에 목메여도 네 자신을 잊지마
+오늘밤도 길지만 아픔은 더 길잖아 
+지울수는 있지만 니가 밉잖아
+오오오 오오오 오오
+그는 너를 사랑하지도 않아 
+오오오 오오오 오오
+그는 너의 이름조차도 몰라 (한번더)
+오오오 오오오 오오
+그는 너를 사랑하지도 않아 
+오오오 오오오 오오
+그는 너의 이름조차도 몰라 왜 몰라
+그녀가 나를스쳐가 왠지 슬퍼보이는데
+언젠가 나를 돌아봐 웃으면 좋겠는데 난 모르는데
+but if its not for me, i guess i'll have to wait and see
+오오오 오오오 오오
+그는 너를 사랑하지도 않아 
+오오오 오오오 오오
+그는 너의 이름조차도 몰라 왜 몰라
+오오오 오오오 오오
+오오오 오오오 오오
+7. Ride
+Baby~ Baby baby baby~
+너를 타는게 참 좋아 Baby
+Baby~ Baby baby baby~
+너와 달리는게 좋아 Baby~
+일과도 끝나고 떠나 보고파도
+그 좁은 차도위로where you gonna go?
+Tablo Skateboard타고
+Brake도 없다고 거리위로 큰파도
+가슴은 두근두근 주변 사람은 수근수근
+내 발밑에 뜬 근두운
+작은 꿈을 꾸는 나 맘이 편해져 when i'm with ya
+같은 곳을 향해 사랑의 평행선을 그리자
+Rail Slidin' Kick Flipin' Grindin'
+난 상관없어 저 규칙의 사이렌
+내 멋대로 살아요 내 천사는 그의 날개를 발목에 달았죠
+Baby~ Baby baby baby~
+너를 타는게 참 좋아 Baby
+Baby~ Baby baby baby~
+너와 달리는게 좋아 Baby~
+I wanna ride with you My Baby~
+(On Ma Skateboard, On ma Scooter, In Ma Car)
+Epik High Mithra, Tukutz, Tablo!
+오늘도 달려 나의 스쿠터는 바람속을 갈라
+속도는 좀 느리다해도 외관은 달라 
+마치 탱크와도 같은 강인함속에
+나와는 착 달라붙는 호흡 만족해
+꽉 막힌 이 도시를 누비며 달려 어느 곳이든
+부르릉 엔진 소리는 불빛의 눈이 모이는
+도로의 흐름을 타고 외쳐 날 보라고
+타 보라고 이 뒷자리의 주인을 찾노라고
+난 원해 이 도시 새벽 공기를 가르며
+두 팔로 날 안으며 바람 속에 둘만 남는 것
+남은 건 남들의 쓴 시선을 다 받는 것
+모두 웃어 넘길 그녀란 보석을 찾는 것
+Baby~ Baby baby baby~
+너를 타는게 참 좋아 Baby
+Baby~ Baby baby baby~
+너와 달리는게 좋아 Baby~
+I wanna ride with you My Baby~
+(On Ma Skateboard, On ma Scooter, In Ma Car)
+Epik High Mithra, Tukutz, Tablo!
+8. 이별, 만남... 그 중점에서
+아무래도 시간은 멈춰 버린것만 같아
+그 동안 널 속였던 벌인 걸 난 알아
+시계를 봐 니가 선물한 이 시계 
+오늘 따라 초침이 날이 서 날 찌를 기세
+주위를 둘러봐도 변한 건 나 하나 
+시간이 흐르며 외로워 그대 눈물 원하나봐
+지금 내 판도라 그녀의 품엔 안도가
+긴 꿈만 같은 산소가 우리 추억을 안고 가
+무엇을 탓해 잘못은 다 난데
+너 역시 사랑해 이 말을 난 말해야만
+조금이나마 죄책감을 줄여 (이렇게)
+흐르는 눈물속에 추억을 묻어
+생각에 잠겨 감겨진 두눈을 떴을때
+떨리는 이성의 밝혀진 불을 켰을때
+내 맘과 같이 넌 떨고 있음이
+느껴져 식은 사랑을 예감한 듯이
+She's Crying He's Crying
+미소만 두고 떠난 그댄 아직 날 사랑하는데
+She's Crying He's Crying
+널 떠나간 그 날 잊은채 난 웃고 살아가는데
+미안해...
+눈가는 서서히 젖어가면서 
+눈동자는 천천히 커져가면서
+어색하게 서서 서성거리며 눈돌리면서
+나만 바라보던 시선이 더는 둘곳이 없어
+세상의 모든 소리 어느새
+니가 한숨을 쉬면서 들이킨듯해 (그래...)
+이 슬픈 연극의 무대 위에 올라서 말을못해
+이어지는 대사를 몰라서 
+믿겨지는가 숨은쉬는가 언젠가 이순간 잊을까
+혼자 풀어가는나 죽어가는 화가의 붓처럼 떨리는 입술로
+넌 내게 미완성 미소를 그려주고
+뒤돌아서 그대 없이 걷는 첫걸음 
+아직은 미숙해 널 사랑했었거든
+벌써  Missing You 내 맘의 한구석에서
+이별과 만남 그 중점에서
+She's Crying He's Crying
+미소만 두고 떠난 그댄 아직 날 사랑하는데
+She's Crying He's Crying
+널 떠나간 그 날 잊은채 난 웃고 살아가는데
+미안해...
+그동안 너와 나 참 많이 변했구나
+그동안 너는 나와달리 편했구나
+아냐 넌 듣고 싶지않아 아마도 
+보고싶었다는 촌스러운 그말도 
+시간도 흘러 눈물은 새 사랑으로 씻기고
+니 곁에 그 사람 품에 넌 미소를 지키고
+혼자가 돼 보냈던 넌 둘이 되어 스쳐가
+이젠 나 혼자 그날 그 기억을 쓸어가
+그날 떠나면서도 날 두고 뒤돌아서도
+날 떠나지 못하고 돌아서지 못하고 그자리에
+영원히 서 있길바랬는데
+She's Crying He's Crying
+미소만 두고 떠난 그댈 아직 날 사랑하는데
+She's Crying He's Crying
+널 떠나간 그 날 잊은채 넌 웃고 살아가는데
+사랑해...
+9. Epikurean
+*Epikurean:'
+사치스러운, 
+쾌락주의의'란 뜻을 가진 
+Epicurean에서 온 말
+*소녀가 말하는 구절은 
+성경 이사야 14장 10-15절에 
+실려 있는 부분이다.
+...그들은 다 네게 말하여 
+이르기를 너도 우리같이 
+연약하게 되었느냐 
+너도 우리같이 되었느냐 하리로다
+네 영화가 음부에 떨어졌음이여 
+너의 비파 소리까지로다 
+구더기가 네 아래 깔림이여 
+지렁이가 너를 덮었도다
+너 아침의 아들 계명성이여 
+어찌 그리 하늘에서 떨어졌으며 
+너 열국을 엎은 자여 
+어찌 그리 땅에 찍혔는고
+네가 네 마음에 이르기를 
+내가 하늘에 올라 
+하나님의 뭇별 위에 
+나의 보좌를 높이리라 
+내가 북극 집회의 
+산 위에 좌정하리라
+가장 높은 구름에 올라 
+지극히 높은 자와 비기리라 하도다
+그러나 이제 
+네가 음부 곧 구덩이의
+ 맨 밑에 빠치우리로다
+10. Paris
+술에 취해 숨소리조차 차가워
+졌을때
+어둠속에서 귓속에
+속삭이는 그대
+Epik High
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love 눈물을 막지는 못해
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love 시간을 멈추진 못해
+잊혀진 낙원을 등지고
+찢겨진 날개를 숨기고
+저 밤거리로 다 버리고
+낮선 첫 발걸음도 망설이고
+눈이부신 네온 불빛과
+불현듯 내게 온 그림자
+아무도 모르고
+배고프고 가슴이 목을 조르고
+황폐한 도시 내 손바닥에
+큰 못이 이 곳이 타락의 메카
+내 사랑이란 죄의 대가
+하늘이 버린 별 운명도 어긴걸
+그대와 눈뜨고 숨쉬고 싶어
+내 날개를 버린 걸
+숨막혀 나 눈이 감겨
+맘이 도시보다 숨이 차서
+터져버릴 듯한
+내 심장을 움켜쥐니 타서
+자꾸만 퍼지는 향기로
+이성의 날개는 잘리고
+검은 달빛을 삼키고
+어두운 밤길을 달리고
+그 어떤 말도 말고
+안고 날아가 어디라도
+후회로 갇힌 섬이라도
+심장을 도려낼 벌이라도
+받아 나 참고 견딜게
+바다와 산도 널 위해
+가를테니 하늘 땅안에
+별이 될때까지 사랑해
+술에 취해 숨소리조차
+차가워 졌을때
+어둠속에서 귓속에
+속삭이는 그대
+나 이제 날아가네 내
+꿈속에서 미소와
+그대란 작은 날개를 가졌으니
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love 눈물을
+막지는 못해
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love 시간을
+멈추진 못해
+눈이 부신 붉은 태양
+지금 너를 향한 내 맘
+너무 간절한 너를 택한
+내 사랑은 하늘을 배반 하지만
+네 품안에 사는 나
+땅에 누워 미소 찾는 나
+또 다른 차원에 살아가
+자라 새 날개로 날아가
+따라가리 저 땅 끝까지도
+바다가 치는 거친 파도
+팔과 다리 날개 꺾인대도
+사랑하니까 불멸을 배신했죠
+차가웠던 도시도
+사막에도 꽃피고
+다 등지고 가로등 뒤로
+너와 내 사랑은 숨쉬고
+술에 취해 숨소리 조차
+차가워 졌을때
+어둠속에서 귓속에
+속삭이는 그대
+나 이제 날아가네 내
+꿈속에서 미소와
+그대란 작은 날개를 가졌으니
+나 이제 날아가네 내
+꿈속에서 그대와
+차가운 이세상 다
+등지고 날아가
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love 눈물을
+막지는 못해
+Oh Faith Oh Oh Oh Destiny
+Oh Oh Love 시간을
+멈추진 못해
+11. Let it rain
+니가 어딜가도 그 누구를 만나도 아니라고 말해도 I Know
+니가 어딜가도 그 누구를 만나도 아니라고 말해도 I Know
+TV를 켰다 끄고 걷다 멈추고 섰다가 눕고 모든게 뭔가 서툴고
+시계를 바라보며 눈에 힘주었다가 풀고 날 비웃고 
+대답이 없는 벽과 다투고 검은 입술에 담배를 물고
+라디오 슬픈 노랫말과 입맞추고 아무도 없는 거울 뒤편에
+나를 채우고 미소를 겨우지어내 
+밤에 부는 칼바람에 먹구름이 찢어질듯
+붉은달 바라보면서 점점 미쳐질듯 잊혀질듯한데 
+엄지손가락에 지문은 지워질듯 밤새
+통화 버튼을 맴도는데 핸드폰에 그대 이름이 떠 
+떨리는 손에 그대 목소리가 들려 웃으며
+온종일 집에 붙어 있었다고 지금 간다고 사랑한다고But I know
+Let in rain... let in rain...
+흐르는 빗물에 흘러내린 눈물에 너의 더러움 모두 씻어줄게
+Let in rain... Let in rain...
+웃으며 다가온 너의 위선을 모두 씻어줄게
+내리는 이 비에 아무도 모르는 나의 아픔을 묻어둔채
+내리는 이 비에 조용히 부숴진 너의 거짓을 묻어둘게
+
+I know 알고 있어말은 못해도 변해버린 
+네 맘을 오늘도 모레도
+돌아오지 않는다는걸 매일 널 보내고 
+돌아서 꿈속에도 널 쫓아 난 목매고
+아픈 내 맘의 눈물로 비를 내리고 
+비로 너의 과오를 씻으려 손내밀고
+웃으며 감싸도 이 상처는 더 패이고 
+니 핸드폰에 벨소리는 심장을 더 때리고
+하루에 몇천번씩 끈을 묶어 아님 
+두 무릎꿇고 고개를 숙여
+어디서부터 우리 뒤틀린건지 대체 
+뭣땜에 그렇게 이끌린건지
+넋이 나간 상태로 길을나서 둘이돼 
+갈라진 미소라도 나눠 받을게 입 다물게 
+너 없인 못사니까 반쪽뿐인 
+사랑조차 내겐 절실하니까!
+Let in rain... let in rain...
+흐르는 빗물에 흘러내린 눈물에 
+너의 더러움 모두 씻어줄게
+Let in rain... Let in rain...
+웃으며 다가온 너의 위선을 모두 씻어줄게
+내리는 이 비에 아무도 모르는 나의 아픔을 묻어둔채
+내리는 이 비에 조용히 부숴진 너의 거짓을 묻어둘게
+니가 어딜가도 그 누구를 만나도 아니라고 말해도 I Know
+내리는 이 비에 아무도 모르는 나의 아픔을 묻어둔채
+내리는 이 비에 조용히 부숴진 너의 거짓을 묻어둘게
+내리는 이 비에 
+너의 거짓을 묻어둘게
+12. 도시가 눈을 감지 않는 이유
+잠이 들지 않는 도시는 빛을 밝히고
+수천만의 인구는 빛을 당기고
+격자로 다져진 빌딩 창 위로
+새벽이 숨쉬고 피곤을 삼키고
+유동의 빛으로 가늘게 번져가는 헤드라이트
+교차로에 숨쉬어 신문의 헤드라인들
+가로수 불빛아래 비틀대는 사람들
+모텔가 골목안에 위태로운 사랑들
+모두를 손짓해 야릇한 네온사인
+선은 다시 호기심의 죄로 die
+모든 문제로부터 빛이 살아 숨쉬어
+희망이랑 빛도 이젠 어둠안에 춤춰
+All my boys in the club tonight 
+All my girls let me love you right
+Come and let yo body rock tonight
+The city is mine
+All my boys in the club tonight 
+All my girls let me love you right
+The City...Oh... The city is mine...
+Seoul city 어느 사거리 저 달의 보금자리 차가운 밤거리 
+낮선 술자리 잔을 주거니 받거니 어째서 맘편히 주머니 다 터니
+맞은편 모텔방에 불이 꺼질때 숨죽인 연인들의 가슴이 터질때
+가로등에 기대 떠나가고픈데 그들의 달콤한 노래가 귀속을 파고드네
+oh why 죽은 꽃이 피는곳에 누군가 걷지못해 병원비를 못내
+dear God don't you see that the people die
+as the devil takes and rapes the C.I.T.Y.
+지금은 하늘에 별이 빛나는 새벽 
+제법 추워진 날씨는 이 도시에 제격
+햇'r을 등지고 난 오늘도 개겨 
+밤새우며 매번 해변을 꿈꾸며 매년
+일터로 나가는 날 철부지란 
+이름의 젊은이
+현실이란 사회 냉소적 어둠이 
+닥쳐와도 꿋꿋이 걸어가는 이 도시속 거북이
+허나 잠조차 잊은 경제난은 언제나 
+우리목을 조이고 있어 이러다 전쟁나?
+그런 생각은 접게나 잠들지 않는 도시속 
+니 꿈을 꿀수없다는 이 겁쟁아
+All my boys in the club tonight 
+All my girls let me love you right
+Come and let yo body rock tonight
+The city is mine
+All my boys in the club tonight 
+All my girls let me love you right
+The City...Oh... The city is mine...
+아침엔 우유 한잔 점심은 Fast Food 
+이 도시의 목표없이 바쁜 백수들이여
+백주 대낮 맥주한잔 어때? 
+난 이도시의 문제아 마치
+이 도시가 가진 고질병은 불면증 
+불현듯 자살하게 만드는 우울증
+내 랩처방전으로 (서른 두명쯤?) 
+치료가 된다면 나도 줘 의사자격증
+바쁠수록 돌아가 피곤하면 졸다가 귀찮음 
+나 몰라라 이렇게도 한번 살아봐
+꿈을 꿔 (춤을 춰) 숨을 쉬어 
+(눈을 떠) 에픽의 Fly 처럼 너도 한번 날아봐
+All my boys in the club tonight 
+All my girls let me love you right
+Come and let yo body rock tonight
+The city is mine
+All my boys in the club tonight 
+All my girls let me love you right
+The City...Oh... The city is mine...
+All my boys in the club tonight 
+All my girls let me love you right
+Come and let yo body rock tonight
+The city is mine
+All my boys in the club tonight 
+All my girls let me love you right
+The City...Oh... The city is mine...
+13. Follow The Flow
+It's right here Epik High you might hear
+there's a new voice behind the promo for this year
+and you like it all of a sudden and don't know why emcee MYK
+making you wanna buy, so high, that I'm hypnotizing the public 
+when this shit drops they're really not ready to catch the subject 
+off topic still I kill this mic before I drop it drop the beats 
+on time making customers wanna cop it, stop it It's too much 
+we're gonna sell out, I thought you knew it's Epik High 
+Do I have to spell it out? well I just did flipped your lid and gave 
+your brain a kiss now you're stuck cuz tablo and MYK made'em pissed 
+We write rhymes on a regular take tracks to the face, turning 
+silence into music or the day goes to waste 
+We travel on into unknown don't follow the roadsign 
+we just try to form the rhymes that read yo mind!
+Let's go everybody follow the flow
+It's Like one to the two two three here we go
+Let's go everybody gettin' to know 
+It's like check where you're at and ask Yourself where did it go?
+Let's go everybody follow the flow
+It's Like one to the two two three here we go
+Let's go everybody gettin' to know 
+It's like check where you're at and ask Yourself where did it go?
+contaminators can't evade us, epik rhyme animators 
+tailor-made ta git you high like skyscraper elevators
+we skywalkin', leavin' sly talkin' player haters
+microphone masturbators breathin' hard like darth vaders
+fuckin' fakers, better recognize, i'm an
+originator, fed up with your lies, since I
+blew up, turned the tables, got famous
+ya quick to switch sides like turntable faders
+now... I do love all of God's creations
+but like an empty hospital, I'm out of patience
+yes I am... the rap game's voice
+every cat's main choice, the rap James Joyce
+it's a piece of cake, gimme a break,
+i kill MCs, then speak at they finnegan's wake 
+I'm much mo' than a cheap CD
+I'm a prohibition mc - i speak-easy
+You betta recognize like u lookin' in the mirror
+I'm takin' lives like a serial killer
+for reala spit fire like Godzilla
+supplyin' dope lines like a mo'fuckin coke dealer
+the rap pharoah from ground zero
+stab u in the chest wit a broken arrow
+u speakin' loud but the crowd is sleepin' hollow
+why u speakin' proud when no headz would ever follow
+kill u for dolo, cd to phono
+not a fan of U2 but I do it pro-bono
+oh no, this is D-tox from the bay
+put it down for Epik High let em walk u the way
+Let's go everybody follow the flow
+It's Like one to the two two three here we go
+Let's go everybody gettin' to know 
+It's like check where you're at and ask Yourself where did it go?
+Let's go everybody follow the flow
+It's Like one to the two two three here we go
+Let's go everybody gettin' to know 
+It's like check where you're at and ask Yourself where did it go?
+14. Swan song
+아버지란 나무 한 자루에 기대서
+25년간의 긴 낮잠에 취해서
+그대 두팔로 덮어주던 그늘 밑에서 
+눈을 감고 뜨겁던 태양을 피했어
+그대 자신을 꺾어 집을 세워줬는데
+내게 세상을 줬는데 깨달았죠 어느새
+당신의 가지가 때로 회초리가 되고
+난 불효의 도끼를 든채로
+아주 조금씩 몰래 아무도 눈치못챌거라고
+생각해 가지를 쳐봤고 내앞에
+아버지는 벌거벗은 채 밤바람에 떠는데
+I don't know what to say...
+Thank You
+너에게 다가가 나 One Two One Two...
+하지만 내 맘의 거리는 더욱 머네
+나에게 묻어둬 네 걱정모두...
+그 안타까움에 눈물에 눈이 머네
+Thank You
+너에게 다가가 나 One Two One Two...
+하지만 내 맘의 거리는 더욱 머네
+나에게 묻어둬 네 걱정모두...
+그 안타까움에 눈물에 눈이 머네
+신사동 골목대장 아마추어 냅스터
+나 소심함을 감춘 술래잡기 마스터
+눈앞에 우두머리 멀대 마치 확대
+너와 내가 마주친 놀이턴 아직 같애
+그 순간 너와 나는 멱살을 붙잡았지만
+눈만 치켜떠 주먹을 뻗진 못해
+다음날 부터 너와 나는 합체
+거센바람을 막아주는 집합채
+벌써 너와 나 수염 거친아저씨
+끝까지 함께 하자고 맹세했어 나 꺾어진
+20대 막바지 우리 미랠위해 건투 빌테니
+위로 날아가 손을 놓지말자 undo
+인간은 삶을 기대 지탱하는 하나의 믿음
+신의 존재로 내 세상은 평온의 길을
+갈 수 있도록 각기 다른 의문의 힘을
+따르지 나도 역시 예외 일 순 없어 지금
+누구나 아는 예수 부처 알라 성모 
+믿음의 길이 난 애초부터 달랐었고
+내 꾸준한 구애는 내 핏줄 내 가족
+내 조상으로부터 내려 온 번영의 약속
+(자연스레)흘러와 지금 이 자리까지 내가
+설 수 있는 힘은 아마 잔인한 인내와
+돌아가신 할아버지 걱정과 큰 사랑
+내 믿음을 산 하나뿐인 신이 된 그 사람
+Thank You
+너에게 다가가 나 One Two One Two...
+하지만 내 맘의 거리는 더욱 머네
+나에게 묻어둬 네 걱정모두...
+그 안타까움에 눈물에 눈이 머네
+Thank You
+너에게 다가가 나 One Two One Two...
+하지만 내 맘의 거리는 더욱 머네
+나에게 묻어둬 네 걱정모두...
+그 안타까움에 눈물에 눈이 머네
+Thank You with my crew 
+당신이 베푼 행복속에 keep loving you
+TBNY with the Epik High
+The sky is the limit so I give it to you
+사랑이 돈이면 난 각설이였던
+어려서 부터 말썽이었던 내게
+사랑이 돈이면 어머니는 은행 같지
+갚지도 못할 난 사랑을 받지
+어머니 뱃속 깊은곳에서 나는
+세상이란 현실을 보기도전부터사실 
+속썩임을 어머니께선 내게 타이름의 속삭임을
+어디서든 내려 주심을
+깊고도 깊은 바다라지만
+어머니의 애정은 바다를 삼킬 가이아
+깊고도 깊은 바다라지만
+나 때문에 어머님의 눈물은 더 깊어진다
+Thank You
+너에게 다가가 나 One Two One Two...
+하지만 내 맘의 거리는 더욱 머네
+나에게 묻어둬 네 걱정모두...
+그 안타까움에 눈물에 눈이 머네
+Thank You
+너에게 다가가 나 One Two One Two...
+하지만 내 맘의 거리는 더욱 머네
+나에게 묻어둬 네 걱정모두...
+그 안타까움에 눈물에 눈이 머네
+15. Good bye
+Lyrics from the movie ″The Life of David Gale″
+That's all I wanted.
+
+But what do we really know about death?
+Just that nobody comes back.
+But there comes a point in life, a moment.
+When your mind outlives, It's desires.
+It's obsessions.
+And when your loses... maybe death is a gift.
+16. Bone Us Elements
+For the four elements
+It's the time to come
+together never mind funk
+you whether
+whether you love
+hip hop or not
+We never stop
+So whatever
+Forever rock the flock
+어서 채워
+Tagger들은 내 존재를
+벽에 새겨
+편견은 벗어 제껴
+우리의 거리에서
+Rhythm과 환호
+우리만의 법칙과 질서로 세워
+보다 높은 이상
+그 위를 걷는 이상
+아무도 막지 못해 계속해
+This Rhyme
+This time I'm a use my mind
+That make
+sure the upper rhyme is
+fickle as the punchline
+This Rhyme
+well It's one of a kind
+and It's one which
+you thought
+It was what to find
+It's the elements
+Epik High
+Represent For Hip Hop
+It's the elements
+It's the E L E M E N T
+It's the elements
+M Y K
+Represent For Hip Hop
+It's the elements
+It's the E L E M E N T
+변화는 계속 돼 가야만 했었네
+그 텅빈 객석에
+의미 재 해석해
+From The Underground
+말하지 않는 싸움
+기다림을 새겨
+Never slows us down
+Never slows us down
+whenever the flows profound
+to this might
+We stay bound
+Hip Hop Pencil Down
+From beneath the surface
+the s and brace
+the beats
+Directly from the soul
+Just to get you on your grip
+Never sleep to street
+The beats to keep
+The peace to seek
+Can't beat me I speak
+for the weak
+We've got love
+for the underground
+꿈을 꿔
+그대 손짓 속에
+신의 존재가 숨을 쉬어
+It's the elements
+Epik High
+Represent For Hip Hop
+It's the elements
+It's the E L E M E N T
+It's the elements
+M Y K
+Represent For Hip Hop
+It's the elements
+It's the E L E M E N T
+부산과 Seoul
+대구 대전 어디든
+If you got soul
+벗어 버려서 느껴
+Turn it on 니
+Microphone 이 켜지면
+Flow 내뱉고 Gotta pass it on
+그 어떤 거리도
+Rhythm이 숨쉬고
+마음이 열리면 그대를 훔치고
+디비립 Hip Hop
+뭉치고
+Now back to the hook
+다 같이 Here we go
+It's the elements
+Epik High
+Represent For Hip Hop
+It's the elements
+It's the E L E M E N T
+It's the elements
+M Y K
+Represent For Hip Hop
+It's the elements
+It's the E L E M E N T
+"
+```
+
+## Tokenize
+
+1집 토큰화해 데이터프레임 저장
+
+```{r}
+tibble(text = rem_css)%>% 
+  unnest_tokens(output = word, input = text, token = pos) %>%
+  separate(col = word, 
+           into = c("word", "pos"),
+           sep = "/") -> rem_df
+```
+
+3집 토큰화해 데이터프레임 저장
+
+```{r}
+tibble(text = swan_css)%>% 
+  unnest_tokens(output = word, input = text, token = pos) %>%
+  separate(col = word, 
+           into = c("word", "pos"),
+           sep = "/") -> swan_df
+```
+
+## 빈도분석
+
+### 1. 총단어
+
+```{r}
+nrow(rem_df) -> n_ppp
+nrow(swan_df) -> n_tmj
+data.table(
+  REMEBER = n_ppp,
+  SWANSONG = n_tmj
+  ) %>% gt() %>% 
+  tab_header("강령 어휘 수")
+
+```
+
+### 2. 상위 빈도 명사
+
+1집
+
+```{r}
+#1집 어휘 수
+rem_df -> df
+n_ppp -> n_total
+
+#명사빈도
+df %>% 
+  # 단어 길이 1개는 분석에서 제외
+  filter(str_length(word) > 1) %>% 
+  # 명사만 선택
+  filter(pos == 'nng') %>% 
+  # 단어 빈도 계산해 정렬
+  count(word, sort = T) %>% 
+  # 1만분률 계산
+  mutate(n_bytotal10000 = round(n/n_total * 10000, 0)) %>% 
+  head(15) -> top_ppp
+```
+
+3집
+
+```{r}
+
+#3집 어휘 수
+swan_df -> df
+n_tmj -> n_total
+df %>% 
+  filter(str_length(word) > 1) %>% 
+  filter(pos == 'nng') %>% 
+  count(word, sort = T) %>% 
+  mutate(n_bytotal10000 = round(n/n_total * 10000, 0)) %>% 
+  head(15) -> top_tmj
+```
+
+표 하나로 결합
+
+```{r}
+
+bind_cols(top_ppp, top_tmj) %>% 
+  gt() %>% tab_header(
+    "상위 빈도 명사"
+  ) %>% tab_spanner(
+    label = "REMEMBER",
+    columns = 1:3
+  ) %>% tab_spanner(
+    label = "SWANSONG",
+    columns = 4:6
+  ) %>% cols_label(
+    word...1 = "명사",
+    n...2 = "빈도",
+    n_bytotal10000...3 = "만분율",
+    word...4 = "명사",
+    n...5 = "빈도",
+    n_bytotal10000...6 = "만분율"
+  )
+```
+
+### 3. 함께 사용한 단어
+
+```{r}
+# 데이터프레임 공통어 결합
+inner_join(
+  rem_df %>% count(word, sort = T),
+  swan_df %>% count(word, sort = T),
+  by = c("word")
+  ) %>% filter(str_length(word) > 1) %>% 
+  # 1만분률 계산
+  mutate(ppp_by10000 = round(n.x/n_ppp, 5) * 10000,
+         tmj_by10000 = round(n.y/n_tmj, 5) * 10000) %>% 
+  arrange(desc(ppp_by10000)) %>% 
+  head(15) %>% 
+  gt() %>% tab_header(
+    "양당이 함께 사용한 단어"
+  ) %>% tab_spanner(
+    label = "빈도",
+    columns = 2:3
+  ) %>% tab_spanner(
+    label = "만분률",
+    columns = 4:5
+  ) %>% cols_label(
+    word = "단어",
+    n.x = "REMEMBER",
+    ppp_by10000 = "REMEMBER",
+    n.y = "SWANSONG",
+    tmj_by10000 = "SWANSONG"
+  )
+```
+
+### 4. 상대빈도
+
+#### 상위 공통어 중 상대적으로 더 많이 쓴 단어
+
+```{r}
+# 1집 기준 공통어 데이터프레임 결합
+inner_join(
+  rem_df %>% count(word, sort = T),
+  swan_df %>% count(word, sort = T),
+  by = c("word")
+  ) %>% filter(str_length(word) > 1) %>% 
+  mutate(ppp_by10000 = round(n.x/n_ppp, 5) * 10000,
+         tmj_by10000 = round(n.y/n_tmj, 5) * 10000,
+  # 사용 어휘 차이 빈도 계산
+         diff = ppp_by10000 - tmj_by10000) %>%
+  # 차이가 큰 순서를 1집 으로 정렬
+  arrange(desc(diff)) %>% 
+  head(15) -> com_ppp
+# 3집 기준 공통어 데이터프레임 결합
+inner_join(
+  rem_df %>% count(word, sort = T),
+  swan_df %>% count(word, sort = T),
+  by = c("word")
+  ) %>% filter(str_length(word) > 1) %>% 
+  mutate(ppp_by10000 = round(n.x/n_ppp, 5) * 10000,
+         tmj_by10000 = round(n.y/n_tmj, 5) * 10000,
+  # 사용 어휘 차이 빈도 계산       
+         diff = ppp_by10000 - tmj_by10000) %>% 
+  # 차이가 큰 순서를 3집 순서로 정렬
+  arrange(diff) %>% 
+  head(15) -> com_tmj
+
+# 데이터프레임 결합
+bind_cols(
+  com_ppp %>% select.(-c(n.x, n.y)), 
+  com_tmj %>% select.(-c(n.x, n.y)) 
+) %>% gt() %>% tab_header(
+  "공동어 중 상대적으로 더 많이 쓴 단어"
+  ) %>% tab_spanner(
+    label = "REMEMBER 기준",
+    columns = 1:4
+  ) %>% tab_spanner(
+    label = "SWANSONG 기준",
+    columns = 5:8
+  ) %>% cols_label(
+    word...1 = "명사",
+    ppp_by10000...2 = "만분율ppp",
+    tmj_by10000...3  = "만분율tmj",
+    diff...4 = "차이",
+    word...5 = "명사",
+    ppp_by10000...6 = "만분율ppp",
+    tmj_by10000...7  = "만분율tmj",
+    diff...8 = "차이",
+  )
+```
+
+# 감정어빈도
+
+```{r}
+url_v <- "https://github.com/park1200656/KnuSentiLex/archive/refs/heads/master.zip"
+dest_v <- "knusenti.zip"
+download.file(url = url_v, 
+              destfile = dest_v,
+              mode = "wb")
+# 압축을 풀면 KnuSentiLex-master 폴더 생성
+unzip("knusenti.zip")
+# 생성된 폴더내 9번째 파일이 사전파일. 
+# 이 파일명을 사전파일 이름 지정
+senti_name_v <- list.files("KnuSentiLex-master/.")[9]
+# 데이터프레임으로 이입
+senti_dic_df <- read_tsv(str_c("data/KnuSentiLex-master/", senti_name_v), col_names = F)
+# 데이터프레임 열 이름 변경
+senti_dic_df <- senti_dic_df %>% rename(word = X1, sScore = X2)
+# 감정값 오류 수정
+senti_dic_df %>% 
+  filter(!is.na(sScore)) %>% 
+  add_row(word = "갈등", sScore = -1) -> senti_dic_df 
+# 수정 확인
+senti_dic_df %>% 
+  filter(!is.na(sScore)) %>% count(sScore)
+# 파일로 저장
+saveRDS(senti_dic_df, "knu_dic.rds")
+# 저장 확인
+list.files(pattern = "^knu")
+```
