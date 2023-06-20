@@ -1,0 +1,596 @@
+---
+title: "2020~2022 축제에 대한 뉴스보도"
+format: html
+editor: visual
+---
+
+2020년 1월 코로나 19 창궐 이후 사회적 거리두기 실천을 추진하며 대면 행사가 전면 취소되는 현상에 따라 '축제'에 대한 뉴스보도 주제모형
+
+##Packages
+
+```{r}
+pkg_v <- c("tidyverse", "tidytext","RcppMeCab")
+lapply(pkg_v, require, ch = T)
+```
+
+##Data collection 
+)
+
+
+```{r}
+readxl::read_excel("C:/data/11NewsResult_20200101-20201231.xlsx") %>% names()
+
+```
+```{r}
+fes_df<- readxl::read_excel("C:/data/11NewsResult_20200101-20201231.xlsx") %>%
+  select(일자, 제목, 본문, 언론사, cat = '통합 분류1', 키워드)
+```
+
+## 선택
+```{r}
+set.seed(37)
+```
+```{r}
+fes_sample_df <-   
+  fes_df %>% 
+  sample_n(size = 3000) 
+```
+```{r}
+fes_df %>% glimpse()
+
+```
+
+###기사 본문과 키워드 비교
+```{r}
+fes_df %>% pull(키워드) %>% head(1)
+
+```
+```{r}
+fes_df %>% pull(제목) %>% head(1)
+
+```
+
+### 여당지, 야당지 구분
+### 문화면, 비문화면 구분
+```{r}
+fes2_df <- 
+  fes_df %>% 
+  # 중복기사 제거
+  distinct(제목, .keep_all = T) %>% 
+  # 기사별 ID부여
+  mutate(ID = factor(row_number())) %>% 
+  # 월별로 구분한 열 추가(lubridate 패키지)
+  mutate(week = week(ymd(일자))) %>%       
+  # 기사 제목과 본문 결합
+  unite(제목, 본문, col = "text", sep = " ") %>% 
+  # 중복 공백 제거
+  mutate(text = str_squish(text)) %>% 
+  # 언론사 구분: 야당지, 여당지 %>% 
+  mutate(press = case_when(
+    언론사 == "조선일보" ~ "야당지",
+    언론사 == "중앙일보" ~ "야당지",
+    언론사 == "경향신문" ~ "여당지",
+    언론사 == "한겨레" ~ "여당지",
+    TRUE ~ "여당지") ) %>% 
+  # 기사 분류 구분 
+  separate(cat, sep = ">", into = c("cat", "cat2")) %>% 
+  # IT_과학, 경제, 사회 만 선택
+  select(-cat2) %>% 
+  # 분류 구분: 사회, 비사회
+  mutate(catSoc = case_when(
+    cat == "문화" ~ "문화면",
+    cat == "지역" ~ "문화면",
+    cat == "국제" ~ "문화면",
+    cat == "스포츠" ~ "문화면",
+    TRUE ~ "비문화면") )
+```
+```{r}
+fes2_df %>% glimpse()
+
+```
+```{r}
+fes2_df %>% count(cat, sort = T)
+
+```
+ '문화, 지역, 국제 순으로 카테고리가 많다.'
+ 
+```{r}
+fes2_df %>% count(catSoc, sort = T)
+
+```
+'문화면이 비문화면보다 3배 이상 다루는 기사양이 많다'
+
+```{r}
+fes2_df %>% count(press, sort = T)
+
+```
+'야당지가 여당지보다 해당 주제에 대하여 더 많이 다루고 있다.'
+
+
+##정제
+### 토큰화
+### 기호 제거 
+```{r}
+"!@#$... 전각ㆍㅣ문자 %^&*()" %>% str_remove("\\w+")
+```
+
+
+```{r}
+fullchar_v <- "ㆍ|ㅣ|‘|’|“|”|○|●|◎|◇|◆|□|■|△|▲|▽|▼|〓|◁|◀|▷|▶|♤|♠|♡|♥|♧|♣|⊙|◈|▣"
+
+```
+
+```{r}
+fes_tk <- 
+fes2_df %>% 
+  mutate(키워드 = str_remove_all(키워드, "[^(\\w+|\\d+|,)]")) %>% 
+  mutate(키워드 = str_remove_all(키워드, fullchar_v)) %>% 
+  unnest_tokens(word, 키워드, token = "regex", pattern = ",") 
+```
+
+
+### 불용어 처리
+```{r}
+count_df <- 
+fes_tk %>% count(word, sort = T)
+
+```
+
+```{r}
+count_df %>% head(40)
+
+```
+### 말뭉치
+```{r}
+combined_df <-
+  fes_tk %>%
+  group_by(ID) %>%
+  summarise(text2 = str_flatten(word, " ")) %>%
+  ungroup() %>% 
+  inner_join(fes2_df, by = "ID")
+```
+
+```{r}
+combined_df %>% glimpse()
+
+```
+
+```{r}
+processed <-
+  combined_df %>% textProcessor(
+    documents = combined_df$text2,
+    metadata = .,
+    wordLengths = c(2, Inf)
+  )
+```
+```{r}
+summary(processed)
+
+```
+
+```{r}
+out <-
+  prepDocuments(processed$documents,
+                processed$vocab,
+                processed$meta,
+                lower.thresh = 0)
+```
+
+```{r}
+summary(out)
+
+```
+
+##  분석
+### 주제의 수 설정
+```{r}
+topicN <- c(3, 9, 100)
+
+```
+```{r}
+storage <- searchK(docs, vocab, K = topicN)
+
+```
+```{r}
+storage
+```
+```{r}
+plot(storage)
+```
+
+###모형구성
+```{r}
+t1 <- Sys.time()
+meta_fit <-
+  stm(
+    documents = docs,
+    vocab = vocab,
+    data = meta,
+    K = 9,         
+    prevalence =~ press + s(week, 6), # 투입하는 공변인
+    max.em.its = 75,                # 최대 반복계산 회수 
+    verbose = F,                    # 반복계산결과 화면출력 여부
+    init.type = "Spectral",
+    seed = 37 
+  )
+```
+
+```{r}
+t2 <- Sys.time()
+
+```
+```{r}
+t2-t1
+
+```
+```{r}
+summary(meta_fit)
+
+```
+## 주제 이름짓기
+```{r}
+findThoughts(
+  model = meta_fit,     # 구성한 주제모형
+  texts = fes2_df$text,  # 문서 본문 문자 벡터
+  topics = c(1, 2),     # 찾고자 하는 주제의 값. 기본값은 모든 주제
+  n = 3                 # 찾고자 하는 문서의 수
+)
+```
+```{r}
+td_gamma <- meta_fit %>% tidy(matrix = "gamma")
+td_gamma$document <- as.integer(td_gamma$document)
+combined_df$ID <- as.integer(combined_df$ID) 
+```
+```{r}
+text_gamma <- 
+combined_df %>% 
+  select(ID, text2, text, 키워드) %>% 
+  left_join(td_gamma, by = c("ID" = "document")) %>% 
+  pivot_wider(
+    names_from = topic,
+    values_from = gamma,
+    names_prefix = "tGamma",
+    values_fill = 0
+    ) 
+
+text_gamma %>% glimpse()  
+```
+해당 주제에 속할 확률이 높은 문서 순서대로 볼수 있다
+```{r}
+text_gamma %>% 
+  arrange(-tGamma7) %>% 
+  pull(text) %>% head(9)
+```
+```{r}
+text_gamma %>% 
+  arrange(-tGamma7) %>% 
+  pull(키워드) %>% .[6]
+```
+```{r}
+text_gamma %>% 
+  arrange(-tGamma2) %>% 
+  filter(str_detect(text, "지원금")) %>% 
+  mutate(text = str_replace_all(text, "지원금", "**지원금**")) %>% 
+  pull(text) %>% 
+  head(5)
+```
+
+
+### 주제 이름 목록
+```{r}
+labelTopics(meta_fit)
+
+```
+```{r}
+topic_name <- tibble(topic = 1:9,
+                     name = c("1. 국제와 정치",
+                              "2. 지역행사",
+                              "3. 트로트붐",
+                              "4. 관광특수",
+                              "5. 방역 봉쇄",
+                              "6. 공연(문화)",
+                              "7. 스포츠",
+                              "8. 경제 영향",
+                              "9. 영화(문화)") )
+```
+이름 목록과 단어목록 결합
+```{r}
+td_beta <- meta_fit %>% tidy(matrix = 'beta') 
+
+term_topic_name <- 
+td_beta %>% 
+  group_by(topic) %>% 
+  slice_max(beta, n = 7) %>% 
+  left_join(topic_name, by = "topic")
+
+term_topic_name
+```
+### 주제별 단어 분포도
+```{r}
+term_topic_name %>% 
+  
+  ggplot(aes(x = beta, 
+             y = reorder_within(term, beta, name),  # 각 주제별로 재정렬
+             fill = name)) +
+  geom_col(show.legend = F) +
+  facet_wrap(~name, scales = "free") +
+  scale_y_reordered() +                             # 재정렬한 y축의 값 설정
+  labs(x = expression("단어 확률분포: "~beta), y = NULL,
+       title = "주제별 단어 확률 분포",
+       subtitle = "주제별로 다른 단어들로 군집") +
+  theme(plot.title = element_text(size = 20))
+```
+
+### 주제별 문서 분포도
+```{r}
+td_gamma <- meta_fit %>% tidy(matrix = 'gamma') 
+
+doc_topic_name <- 
+td_gamma %>% 
+  group_by(topic) %>% 
+  left_join(topic_name, by = "topic")
+
+doc_topic_name
+
+```
+```{r}
+doc_topic_name %>% 
+  ggplot(aes(x = gamma, fill = name)) +
+  geom_histogram(bins = 50, show.legend = F) +
+  facet_wrap(~name) + 
+  labs(title = "주제별 문서 확률 분포",
+       y = "문서(기사)의 수", x = expression("문서 확률분포"~(gamma))) +
+  theme(plot.title = element_text(size = 20))
+```
+
+### 주제별 단어-문서 분포도
+```{r}
+# 주제별 상위 7개 단어 추출
+top_terms <- 
+td_beta %>% 
+  group_by(topic) %>% 
+  slice_max(beta, n = 7) %>% 
+  select(topic, term) %>% 
+  summarise(terms = str_flatten(term, collapse = ", ")) 
+```
+
+```{r}
+gamma_terms <- 
+td_gamma %>% 
+  group_by(topic) %>% 
+  summarise(gamma = mean(gamma)) %>% 
+  left_join(top_terms, by = 'topic') %>%  # 주제별 단어 데이터프레임과 결합
+  left_join(topic_name, by = 'topic')     # 주제 이름 데이터프레임과 결합
+```
+
+```{r}
+gamma_terms
+
+```
+
+ 결합한 데이터 프레임을 막대 도표로 시각화
+```{r}
+gamma_terms %>% 
+  
+  ggplot(aes(x = gamma, y = reorder(name, gamma), fill = name)) +
+  geom_col(show.legend = F) +
+  geom_text(aes(label = round(gamma, 2)), # 소수점 2자리 
+            hjust = 1.15) +                # 라벨을 막대도표 안쪽으로 이동
+  geom_text(aes(label = terms), 
+            hjust = -0.05) +              # 단어를 막대도표 바깥으로 이동
+  scale_x_continuous(expand = c(0, 0),    # x축 막대 위치를 Y축쪽으로 조정
+                     limit = c(0, .8)) +   # x축 범위 설정
+  labs(x = expression("문서 확률분포"~(gamma)), y = NULL,
+       title = "코로나 발병 초기(2020년) 축제 관련 보도 상위 주제어",
+       subtitle = "주제별로 기여도가 높은 단어 중심") +
+  theme(plot.title = element_text(size = 20))
+```
+ 
+## 공변인 분석
+```{r}
+out$meta$rating <- as.factor(out$meta$press)
+prep <- estimateEffect(formula = 1:9 ~ press + s(week, 6), 
+                       stmobj = meta_fit,
+                       metadata = out$meta,
+                       uncertainty = "Global")
+
+summary(prep, topics= 1:9)
+```
+```{r}
+combined_df %>% names()
+```
+
+
+```{r}
+combined_df %>% 
+  left_join(td_gamma, by = c("ID" = "document")) %>% 
+  pivot_wider(
+    names_from = topic,
+    values_from = gamma,
+    names_prefix = "tGamma",
+    values_fill = 0
+    ) %>% 
+
+  arrange(-tGamma1) %>% 
+  filter(str_detect(text, "백신")) %>% 
+  mutate(text = str_replace_all(text, "백신", "**백신**")) %>% 
+  head(30)
+```
+```{r}
+combined_df %>% names()
+
+```
+
+ 
+```{r}
+combined_df %>% 
+  left_join(td_gamma, by = c("ID" = "document")) %>% 
+  pivot_wider(
+    names_from = topic,
+    values_from = gamma,
+    names_prefix = "tGamma",
+    values_fill = 0
+  ) %>% 
+  
+  arrange(-tGamma1) %>% 
+  filter(str_detect(text, "선거")) %>% 
+  mutate(text = str_replace_all(text, "선거", "**선거**")) %>% 
+  head(30)
+```
+### 정치성향에 따른 주제 분포도
+```{r}
+plot.estimateEffect(
+  prep,
+  covariate = "press",
+  topics = c(1, 2, 4),
+  model = meta_fit,
+  method = "difference",
+  cov.value1 = "여당지",
+  cov.value2 = "야당지",
+  xlab = "문서당 주제 분포 비율(야당지 대 여당지)",
+  main = "언론사 정치성향에 따른 문서별 주제 분포",
+  xlim = c(-.1, .1),
+  labeltype = "custom",
+  custom.labels = c("주제1", "주제2", "주제4")
+)
+```
+ 
+```{r}
+topic_name
+```
+```{r}
+coef_df <- 
+prep %>% tidy() %>% 
+  filter(term == "press여당지")
+coef_df
+```
+ 주제별 상위 10개 단어 추출하기
+```{r}
+top_terms <- 
+meta_fit %>% tidy(matrix = "beta")  %>% 
+  group_by(topic) %>% 
+  slice_max(beta, n = 7) %>% 
+  select(topic, term) %>% 
+  summarise(terms = str_flatten(term, " "))
+```
+ 
+```{r}
+top_terms
+
+```
+ 
+```{r}
+# 데이터프레임 결합
+term_coef_name <- 
+top_terms %>% 
+  left_join(topic_name, by = "topic") %>% 
+  left_join(coef_df, by = "topic") 
+  
+term_coef_name %>% glimpse()
+```
+###관련 보도 상위 주제어
+```{r}
+term_coef_name %>% 
+  
+  ggplot(aes(x = estimate,
+             y = reorder(name, estimate),
+             fill = name)) +
+  geom_col(show.legend = F) +
+  geom_errorbar(aes(xmin = estimate - std.error,
+                    xmax = estimate + std.error), 
+                width = .9, size = .4, color = "grey10",
+                show.legend = F) +
+  scale_x_continuous(expand = c(0, 0),
+                     limits = c(-.75, .15),
+                     breaks = 0) +
+  geom_text(aes(x =-.4, label = terms), show.legend = F) +
+  geom_text(aes(label = round(estimate, 3)),
+            hjust = -.2) +
+  
+  labs(x = "문서당 주제 분포 비율(야당지 대 여당지)",
+       y = NULL,
+       title = "코로나 발병 초기(2020년) 축제 관련 보도 상위 주제어") +
+  theme(plot.title = element_text(size = 20))
+```
+ 
+```{r}
+plot.estimateEffect(
+  prep,
+  covariate = "week",    
+  topics = c(1:3),
+  model = meta_fit,
+  method = "continuous", # 시간대 연속적으로 표시
+  xlab = "기간 (1월 ~ 12월)",
+  main = "시간대별 주제 분포"
+)
+```
+ 
+```{r}
+topic_name
+
+```
+```{r}
+coef_time <- 
+prep %>% tidy() %>% 
+  filter(str_detect(term, "^s"))
+coef_time
+```
+```{r}
+# 데이터프레임 결합
+term_coef_time <- 
+coef_time %>% 
+  left_join(topic_name, by = "topic") 
+  
+term_coef_time %>% glimpse()
+```
+
+###시간대별 주제 분포
+```{r}
+term_coef_time %>% 
+  mutate(term = str_extract(term, "\\d$")) %>% 
+  mutate(term = as.integer(term)) %>% 
+  mutate(term = term * 2 - 1) %>% 
+  mutate(term = as.factor(term)) %>% 
+           
+  filter(str_detect(name, "^1|^2|^8")) %>% 
+  
+  ggplot(aes(x = term,
+             y = estimate,
+             color = name)) +
+  geom_line(aes(group = name), size = 1.2) +
+  geom_point(aes(shape = name), size = 3,) +
+  geom_errorbar(aes(ymin = estimate - std.error, 
+                    ymax = estimate + std.error), 
+                width = .4, size = 1,
+                position = position_dodge(.01)) +
+  labs(x = "기간(1월 ~ 12월)",
+       y = "문서당 주제 분포 비율",
+       title = "시간대별 주제 분포") +
+   theme(plot.title = element_text(size = 20))
+```
+ 
+### 주제 사이 상관성
+```{r}
+library(reshape2)
+
+get_lower_tri <- function(x){
+  x[upper.tri(x)] <- NA
+  return(x)
+}
+
+topicCorr(meta_fit) %>% .$cor %>% 
+  get_lower_tri() %>% 
+  melt(na.rm = T) %>% 
+  
+  ggplot(aes(x = factor(Var1), 
+             y = factor(Var2), 
+             fill = value)) +
+  geom_tile(color = "white") + 
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+                       midpoint = 0,
+                       limit = c(-1, 1), space = "Lab") +
+  geom_text(aes(Var1, Var2, label = round(value, 3)), color = "black", size = 3) +
+  theme_minimal()
+```
+ 
+ 
