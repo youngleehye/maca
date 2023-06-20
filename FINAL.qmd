@@ -1,5 +1,5 @@
 ---
-title: "2020~2022 축제에 대한 뉴스보도"
+title: "2020 축제에 대한 뉴스보도"
 format: html
 editor: visual
 ---
